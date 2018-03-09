@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import sys
 import socket
 import select
+from Parser import color_parser
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 from Crypto.Cipher import PKCS1_OAEP # Nouvelle couche d'encryption pour renforcer la sécurité a rajouter (voir doc)
@@ -140,7 +141,6 @@ def chat_client():
         
         #conversion of string to KEY
         public_key = RSA.importKey(getpbk)
-        print "clé publique:" + str(public_key) 
 
         #my_private_key = my_prv_key()
 
@@ -159,18 +159,18 @@ def chat_client():
         # Envoyer l'IV, la clé symétrique chiffrée (et le pseudo (pas encore)) dans un seul et meme paquet
         socket_pack = hex_IV + hex_encrypted_aes_key + hex_enc_nickname
         s.send(socket_pack)
-        print "sym key encrypted: " + str(hex_encrypted_aes_key)
+        print "\n"
+        print colored("Symetric key encrypted: " + str(hex_encrypted_aes_key), "red")
+
         IV = AES_IV[0]
         
-        # ---- TEST ----
-        #new_encrypted_aes_key = hex_encrypted_aes_key.decode("hex")
+        print colored('Connected to remote host. You can start sending messages', "blue")
+        print "\n"
+        
+        me_print = colored("[Me] ", "yellow")
 
-        # Sending the nickname to the remote server
-        #send_nickname_to_remote(nickname, s, public_key)
-
-        print 'Connected to remote host. You can start sending messages'
-
-        sys.stdout.write('[Me] '); sys.stdout.flush()
+        sys.stdout.write(me_print); sys.stdout.flush()
+        message = ""
 
         while 1:
                 socket_list = [sys.stdin, s]
@@ -191,14 +191,15 @@ def chat_client():
                                 else :
                                     
                                     # Chiffrement du message avec la clé symétrique
-                                    data =  string_socket_message(sym_enc_data, iv, AES_KEY)                               
-                                    print "\n" + str(data)
-                                    sys.stdout.write('[Me] ')
+                                    data =  string_socket_message(sym_enc_data, iv, AES_KEY)
+                                    message = color_parser(data)
+                                    print "\n" + message[0] + message[1]
+                                    sys.stdout.write(me_print)
                                     sys.stdout.flush()    
 
                         else :
                                 # user entered a message
-                                msg = raw_input("[Me] ")#sys.stdin.readline()
+                                msg = raw_input(me_print)#sys.stdin.readline()
                                 #txt_colored = u"[" + str(nickname) + " dit] "
                                 #nickname_colored = colored(txt_colored, "magenta")
                                 # encrypt the data with public key and sending it to the server

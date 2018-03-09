@@ -9,17 +9,15 @@ from __future__ import unicode_literals
 import sys
 import socket
 import select
-from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_OAEP
-from Crypto.Cipher import AES
-from Crypto.Hash import SHA256
-from Crypto import Random
+from Cipher import *
+from Parser import arobase_parser
 import pickle
 import os
 from glob import glob
 import ast
 import signal
 import hashlib
+from os.path import expanduser
 
 reload(sys)
 sys.setdefaultencoding('utf8')
@@ -49,189 +47,25 @@ def open_room():
     port = raw_input("Which port? ")
     return port
 
-def rsa_keys_generator():
-    random_generator = Random.new().read
-    private_key = RSA.generate(4096, random_generator)
-    public_key = private_key.publickey()
-
-    return public_key, private_key
-
-# Couche de chiffrement symétrique AES
-def sym_encrypt(data, iv, AES_key):
-    symetric_cipher = AES.new(AES_key , AES.MODE_CFB, iv)
-
-    return symetric_cipher.encrypt(data)
-
-
-def sym_decrypt(enc_data, iv, AES_key):
-    symetric_cipher = AES.new(AES_key , AES.MODE_CFB, iv)
-
-    return symetric_cipher.decrypt(enc_data)
-
-# Chiffrement asymétrique RSA
-def asym_encrypt(sym_key, pub_key):
-    asym_cipher = PKCS1_OAEP.new(pub_key)
-
-    return asym_cipher.encrypt(sym_key)
-
-
-def asym_decrypt(enc_sym_key, priv_key):
-    asym_cipher = PKCS1_OAEP.new(priv_key)
-
-    return asym_cipher.decrypt(enc_sym_key)
-
-
-def send_socket_message(str_message, iv, AES_key):
-    cipher_text = sym_encrypt(str_message, iv, AES_key)
-    hex_cipher_text = cipher_text.encode("hex").upper()
-    
-    return hex_cipher_text
-
-def string_socket_message(hex_enc_data, iv, AES_key):
-    enc_data = hex_enc_data.decode("hex")
-    message = sym_decrypt(enc_data, iv, AES_key)
-    str_message = str(message)
-    
-    return str_message
-
-
-def generate_keys(ip):
-    rsa_keys = rsa_keys_generator()
-    private_key = rsa_keys[1]
-    public_key = rsa_keys[0]
-
-    folder_name = "client_" + str(ip)
-    folder_creation_command = "mkdir " + folder_name
-    os.system(folder_creation_command)
-
-    file_priv_name = "private_key.pem"
-    file_priv_creation_command = "touch " + "/root/" + folder_name + "/" + file_priv_name
-    priv_key_path = "/root/" + folder_name + "/" + file_priv_name
-    os.system(file_priv_creation_command)
-
-    # exporting the key on a PEM file
-    #file_key_name = "prv" + str(client_id) + ".pem"
-    #file_key = open(file_key_name, "w")
-
-    file_priv_key = open(priv_key_path, "w")
-    file_priv_key.write(private_key.exportKey("PEM"))
-    file_priv_key.close
-
-    file_pub_name = "public_key.pub"
-    file_pub_creation_command = "touch " + "/root/" + folder_name + "/" + file_pub_name
-    pub_key_path = "/root/" + folder_name + "/" + file_pub_name
-    os.system(file_pub_creation_command)
-
-    file_pub_key = open(pub_key_path, "w")
-    file_pub_key.write(public_key.exportKey())
-    file_pub_key.close
-
-    return public_key
-
-
-def get_priv_key(ip):
-    priv_key_path = "/root/" + "client_" + str(ip) + "/private_key.pem" 
-    pv_key_file = open(priv_key_path, "r+")
-    pv_key = RSA.importKey(pv_key_file.read())
-    pv_key_file.close
-
-    return pv_key
-
-def get_pub_key(ip):
-    pub_key_path = "/root/" + "client_" + str(ip) + "/public_key.pub" 
-    pub_key_file = open(pub_key_path, "r+")
-    pub_key = RSA.importKey(pub_key_file.read())
-    pub_key_file.close
-
-    return pub_key
-
-# Est ce que la clé publique existe déjà pour cet adresse ip? Ou faut-il en créer une autre?
-def check_pub_key(ip):
-    path_folder = "/root/" + "client_" + str(ip)
-    
-    if os.path.exists(path_folder):
-        pub_key_path = path_folder + "/" + "public_key.pub"
-        pub_key_file = open(pub_key_path, "r+")
-        pub_key = RSA.importKey(pub_key_file.read())
-        pub_key_file.close
-        
-        return pub_key
-    
-    else:
-        new_pub_key = generate_keys(ip)
-    
-    return new_pub_key
-
-# Déchiffre un message recu sous format hexadécimal
-def decrypt_message(ip, hex_enc_data):
-    list_sym_key_iv = IP_SYM_KEY_DICT[ip]
-    sym_key = list_sym_key_iv[0]
-    IV = list_sym_key_iv[1]
-    
-    str_decrypted_message = string_socket_message(hex_enc_data, IV, sym_key)
-    
-    return str_decrypted_message
-
-
 def check_arobase(data_content):
     string_content = ("u" + str(data_content)).encode("utf-8")
     if u"@".encode("utf-8") in string_content:
         return True
-    
+
     return False
-
-
-# Chiffre un message sous format string et l'encode en hexadécimal
-def encrypt_message(ip, data):
-    list_sym_key_iv = IP_SYM_KEY_DICT[ip]
-    sym_key = list_sym_key_iv[0]
-    IV = list_sym_key_iv[1]  
-    pub_key = get_pub_key(ip)
-
-    hex_ciphertext = send_socket_message(str(data), IV, sym_key)
-    
-    return hex_ciphertext
 
 # Fonction permettant de transmettre un message envoyé à tous les clients connectés
 def transmit(server_socket, sock, message, ip, is_message_client):
     
     # Message en provenance d'un client
     if is_message_client:
-        decrypted_message = decrypt_message(ip, message) # Le message envoyé par le socket est déchiffré
+        decrypted_message = decrypt_message(ip, message, IP_SYM_KEY_DICT) # Le message envoyé par le socket est déchiffré
         
         if check_arobase(decrypted_message):
-            nickname_chars = []
-            nickname = ""
-            
-            list_decrypted_message = list(decrypted_message)
-            
-            print "dec message: " + str(list_decrypted_message)
-            
-            first_space = True
-            get_out = False
-            trunc_message = []
-        
-            for index, caract in enumerate(list_decrypted_message):
-                if caract == (u"@").encode("utf-8"):
-                    arrobase_num = index
-
-                    while index < len(list_decrypted_message):
-                        if list_decrypted_message[index] == (u" ").encode("utf-8"):
-                            get_out = True
-                            break
-                        
-                        else:
-                            nickname_chars.append(list_decrypted_message[index])
-                        
-                        index = index + 1
-                            
-                if get_out:
-                    trunc_message = list_decrypted_message[index:len(list_decrypted_message)]
-                    break
-                                  
-            nickname = "".join(nickname_chars)
-            message_to_send = "".join(trunc_message)
-            
+               
+            arobase_parse = arobase_parser(decrypted_message)
+            nickname = arobase_parse[0]
+            message_to_send = arobase_parse[1]
             print "nickname: " + nickname
             print "trunc message: " + message_to_send
             print "liste nicknames: " + str(IP_NICKNAME)
@@ -240,15 +74,15 @@ def transmit(server_socket, sock, message, ip, is_message_client):
                 if IP_NICKNAME[ip_elem] == nickname:
                     ip_cipher_addr = ip_elem
                     cipher_socket = IP_SOCKET_DICT[ip_elem] # Socket désigné par le nickname et l'adresse ip associée
-                    message_to_send = IP_NICKNAME[ip] + " to [Me]" + message_to_send
-                    hex_ciphertext = encrypt_message(ip_cipher_addr, message_to_send)
+                    message_to_send = IP_NICKNAME[ip] + " to you:" + message_to_send
+                    hex_ciphertext = encrypt_message(ip_cipher_addr, message_to_send, IP_SYM_KEY_DICT)
                     cipher_socket.send(hex_ciphertext)
                     
                     break
                 
             if nickname not in IP_NICKNAME.values():    
                 ip_cipher_addr = ip_elem
-                hex_ciphertext = encrypt_message(ip_cipher_addr,nickname + " not found") # Sinon on renvoie un message d'erreur au socket envoyeur
+                hex_ciphertext = encrypt_message(ip_cipher_addr,nickname + " not found", IP_SYM_KEY_DICT) # Sinon on renvoie un message d'erreur au socket envoyeur
                 sock.send(hex_ciphertext)
             
             return # Permet de sortir de la fonction
@@ -259,7 +93,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
                     # Chiffrer le message pour tous les sockets présents et le renvoyer a tous les sockets apres encryption
                     curr_tuple = socket.getpeername()
                     ip_client_addr = curr_tuple[0]
-                    hex_ciphertext = encrypt_message(ip_client_addr, decrypted_message)
+                    hex_ciphertext = encrypt_message(ip_client_addr, decrypted_message, IP_SYM_KEY_DICT)
                     socket.send(hex_ciphertext)
     
                 except:
@@ -283,7 +117,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
                     curr_tuple = socket.getpeername()
                     ip_client_addr = curr_tuple[0]
     
-                    hex_ciphertext = encrypt_message(ip_client_addr, message)
+                    hex_ciphertext = encrypt_message(ip_client_addr, message, IP_SYM_KEY_DICT)
                     socket.send(hex_ciphertext)                
     
                 except:
@@ -436,7 +270,7 @@ def chat_server():
                                 IP_SYM_KEY_DICT[curr_ip] = sym_key_iv_pair
 
                                 # Déchiffrement du pseudo (nickname) et ajout de ce dernier dans une liste associée a l'ip
-                                nickname = decrypt_message(curr_ip, hex_enc_nickname)
+                                nickname = decrypt_message(curr_ip, hex_enc_nickname, IP_SYM_KEY_DICT)
                                 IP_NICKNAME[curr_ip] = nickname
                                 
                                 print "nickname: " + str(nickname)
