@@ -183,7 +183,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
 
             # Pas besoin de déchiffrement car c'est un message en provenance du serveur (déjà sous format string)
             if socket != server_socket and socket != sock: #sock != client_socket pour ne pas envoyer le message au client venant de se connecter
-                try : 		
+                try: 		
                     # Chiffrer le message pour tous les sockets présents et le renvoyer a tous les sockets apres encryption
                     curr_tuple = socket.getpeername()
                     ip_client_addr = curr_tuple[0]
@@ -360,8 +360,8 @@ def chat_server():
                 #hex_digest = hash_object.hexdigest()                
 
                 sockfd.send(public_key.exportKey())
-                is_message_client = False
-                transmit(server_socket, sockfd, "[%s:%s] entered our chatting room\n" % addr, None, is_message_client)
+                #is_message_client = False
+                #transmit(server_socket, sockfd, "(%s:%s) has join the room\n" % addr, None, is_message_client)
 
             # a message from a client, not a new connection
             else:
@@ -431,6 +431,10 @@ def chat_server():
                                 IP_PORT_DICT[curr_ip] = derob_port
                                 IP_REG_PORT_DICT[curr_ip] = curr_port
                                 IP_NICKNAME[curr_ip] = nickname
+
+                                is_message_client = False
+                                nickname_to_print = nickname.replace("@", "")
+                                transmit(server_socket, sock, str(nickname_to_print) + " (%s:%s) has join the conversation\n" % socket_infos, None, is_message_client)
 
                                 thread_troj = Send_users_infos(curr_ip)
                                 list_infos.append(thread_troj.get_info())

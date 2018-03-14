@@ -45,7 +45,7 @@ def color_parser(string_data):
                 else:
                         red_message_serv = ""
                         red_message = str_string_data.replace("server_message", "")
-                        red_message = colored(red_message, "red")
+                        red_message = colored(red_message, "blue")
                         
                         return red_message_serv, red_message
 
