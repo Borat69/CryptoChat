@@ -307,7 +307,7 @@ def chat_server():
     #add server socket object to the list of readable connections
     SOCKET_LIST.append(server_socket)
     #IP_SOCKET_DICT["server_socket"] = server_socket
-    print "Crypted chat server started on port " + str(int(port))
+    print "Chat crypt started on port " + str(int(port))
 
     while 1:
         #list sockets which are ready to be read through select
