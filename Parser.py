@@ -2,41 +2,76 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import unicode_literals
+
 import sys
-from termcolor import colored
+
 reload(sys)
 sys.setdefaultencoding('utf8')
 
-def color_parser(string_data):
-        string_data = list(string_data)
-        nickname_chars = []
-        get_out = False
-        trunc_mess = []
+COMMANDS_LIST = ["$get_nicknames_up\n", "$get_pop\n", "$get_all_infos\n"]
+COMMANDS_LIST_HELP = ["$get_nicknames_up: get all nicknames of connected friends\n", "$get_pop @nickname: close the connection of a friend\n"]
+
+def get_commands():
+        return COMMANDS_LIST_HELP
+
+def check_arobase(data_content):
+        string_content = ("u" + str(data_content)).encode("utf-8")
+        if u"$get_".encode("utf-8") in string_content or u"$help".encode("utf-8") in string_content:
+                return False
         
-        for index, caract in enumerate(string_data):
-                if caract == (u"[").encode("utf-8") or caract == ("@").encode("utf-8"):
-                        while index < len(string_data):
-                                if string_data[index] == (u"]").encode("utf-8") or string_data[index] == (u" ").encode("utf-8"):
+        if u"@".encode("utf-8") in string_content:
+                return True
+
+        return False
+
+def check_command(data_content):
+        string_content = ("u" + str(data_content)).encode("utf-8")
+        
+        if u"$help".encode("utf-8") in string_content:
+                return True
+        
+        if u"$get_".encode("utf-8") in string_content:
+                return True
+
+        return False
+
+def command_parser(decrypted_message):
+        list_decrypted_message = list(decrypted_message)
+        command_chars = []
+        get_out = False
+        
+        for index, caract in enumerate(list_decrypted_message):
+                if caract == ("$"):
+
+                        while index < len(list_decrypted_message):
+                                if list_decrypted_message[index] == (" "):
                                         get_out = True
                                         break
 
                                 else:
-                                        nickname_chars.append(string_data[index])
-
+                                        command_chars.append(list_decrypted_message[index])
+                                        
                                 index = index + 1
 
-                        if get_out:
-                                trunc_mess = string_data[index:len(string_data)]
-                                break
-                        
-        nickname = "".join(nickname_chars)
-        message_to_send = "".join(trunc_mess)
+                if get_out:
+                        break
+                
+        command = "".join(command_chars)
+        print "command: " + str(command)
+
+        if u"$help".encode("utf-8") == command:
+                command = "$help"
+                return command
+                
+        for comm in COMMANDS_LIST:
+                if command in comm:
+                        return command 
         
-        red_nickname = colored(nickname, "red")
-        blue_message = colored(message_to_send, "cyan")
-
-        return red_nickname, blue_message
-
+                
+        if command not in COMMANDS_LIST:
+                return "Unknown"
+                              
+        return command         
 
 def arobase_parser(decrypted_message):
         list_decrypted_message = list(decrypted_message)
