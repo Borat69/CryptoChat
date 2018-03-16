@@ -8,7 +8,7 @@ import sys
 reload(sys)
 sys.setdefaultencoding('utf8')
 
-COMMANDS_LIST = ["$get_nicknames_up\n", "$get_pop\n", "$get_all_infos\n"]
+COMMANDS_LIST = ["$get_nicknames_up", "$get_pop", "$get_all_infos"]
 COMMANDS_LIST_HELP = ["$get_nicknames_up: get all nicknames of connected friends\n", "$get_pop @nickname: close the connection of a friend\n"]
 
 def get_commands():
@@ -73,7 +73,7 @@ def command_parser(decrypted_message):
                               
         return command         
 
-def arobase_parser(decrypted_message):
+def arobase_parser(decrypted_message, is_arobase_message):
         list_decrypted_message = list(decrypted_message)
         nickname_chars = []
         first_space = True
@@ -95,8 +95,13 @@ def arobase_parser(decrypted_message):
                                 index = index + 1
 
                 if get_out:
-                        trunc_message = list_decrypted_message[index:len(list_decrypted_message)]
-                        break
+                        if is_arobase_message:
+                                trunc_message = list_decrypted_message[index:len(list_decrypted_message)]
+                                break
+
+                        nickname = "".join(nickname_chars)
+
+                        return nickname, None
 
         nickname = "".join(nickname_chars)
         message_to_send = "".join(trunc_message)

