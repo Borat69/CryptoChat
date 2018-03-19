@@ -52,6 +52,9 @@ global IP_REG_PORT_DICT
 IP_REG_PORT_DICT = {}
 global list_infos
 list_infos = []
+save_socket = ""
+
+compteur = 0
 
 now = datetime.datetime.now()
 minute = now.minute
@@ -60,22 +63,138 @@ day = now.day
 month = now.month
 year = now.year
 
+global start
+start = 0
+first_passage = True
+
+
+def get_time():
+    str_minute = ""
+    str_minute = str(minute)
+    
+    if int(minute) in range(0, 10):
+        str_minute = "0" + str(minute)
+
+    str_hour = ""
+    str_hour = str(hour)
+
+    if int(hour) in range(0, 10):
+        str_hour = "0" + str(hour)
+
+    str_day = ""
+    str_day = str(day)
+
+    if int(day) in range(0, 10):
+        str_day = "0" + str(day)
+
+    str_month = ""
+    str_month = str(month)
+
+    if int(month) in range(0, 10):
+        str_month = "0" + str(month)
+
+    return str_minute, str_hour, str_day, str_month
+
+
+def remove_socket(sock):
+    if sock in SOCKET_LIST:
+        SOCKET_LIST.remove(sock)
+    
+    ip_addr = ""
+    
+    for ip in IP_SOCKET_DICT:
+        if str(sock) == str(IP_SOCKET_DICT[ip]):
+            ip_addr = str(ip)
+            break                    
+    
+    if ip_addr != "":                                        
+        if ip_addr in IP_SOCKET_DICT:
+            del IP_SOCKET_DICT[ip_addr]
+            
+        if ip_addr in IP_NICKNAME:
+            del IP_NICKNAME[ip_addr]
+            
+        if ip_addr in IP_PORT_DICT:
+            del IP_PORT_DICT[ip_addr]
+            
+        if ip_addr in IP_REG_PORT_DICT:
+            del IP_REG_PORT_DICT[ip_addr]
+
+
 # Fonction permettant de transmettre un message envoyé à tous les clients connectés
 def transmit(server_socket, sock, message, ip, is_message_client):
-
+    global save_socket
+    global compteur
+    global first_passage
+    global start
+    
     # Message en provenance d'un client
     if is_message_client:
+        # Gestion des messages intempestifs
+        if save_socket == str(sock):
+            compteur += 1
+            
+            if first_passage:
+                start = time.time()
+                first_passage = False
+                
+        else:
+            compteur = 0
+            first_passage = True
+            start = 0
+            
+        if compteur > 5 and compteur < 7:
+            timer = time.time() - start
+            
+            if timer < 3:
+                message = "Slow down the messages please, or you will be disconnected"
+                hex_ciphertext = encrypt_message(ip ,message , IP_SYM_KEY_DICT)
+                sock.send(hex_ciphertext)
+            
+            else:
+                compteur = 0
+                first_passage = True
+                start = 0
+                
+        elif compteur > 8 and compteur < 10:
+            timer = time.time() - start
+            
+            if timer < 5:
+                message = "This is your last chance!"
+                hex_ciphertext = encrypt_message(ip ,message , IP_SYM_KEY_DICT)
+                sock.send(hex_ciphertext)   
+                
+            else:
+                compteur = 0
+                first_passage = True
+                start = 0 
+        
+        elif compteur > 11:
+            timer = time.time() - start
+            
+            if timer < 7:
+                message = "Good bye!"
+                hex_ciphertext = encrypt_message(ip ,message , IP_SYM_KEY_DICT)
+                sock.send(hex_ciphertext)
+                sock.close()
+
+                remove_socket(sock)                       
+                
+                return
+            
+    
+            else:
+                compteur = 0
+                first_passage = True
+                start = 0
+
+                
+        save_socket = str(sock)     
         decrypted_message = decrypt_message(ip, message, IP_SYM_KEY_DICT) # Le message envoyé par le socket est déchiffré
 
         with open("message_store", "a+") as f:
-
-            str_minute = ""
-            str_minute = str(minute)
-            
-            if int(minute) in range(0, 10):
-                str_minute = "0" + str(minute)
-
-            saved_data = str(day) + "/" + str(month) + "/" + str(year) + " at [" + str(hour) + "h" + str_minute + "]" + " " + decrypted_message + "\n"
+            time_now = get_time()
+            saved_data = time_now[2] + "/" + time_now[3] + "/" + str(year) + " at [" + time_now[1] + "h" + time_now[0] + "]" + " " + decrypted_message + "\n"
             f.write(saved_data)
 
         # Gestion des commandes
@@ -164,6 +283,8 @@ def transmit(server_socket, sock, message, ip, is_message_client):
                         
                         cipher_socket = IP_SOCKET_DICT[ip_elem] # Socket désigné par le nickname et l'adresse ip associée
                         cipher_socket.close()
+                        remove_socket(cipher_socket)
+
                         break
 
                 if nickname not in IP_NICKNAME.values():    
@@ -217,28 +338,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
                     # broken socket connection
                     socket.close()
                     # broken socket, remove it
-                    if socket in SOCKET_LIST:
-                        SOCKET_LIST.remove(socket)
-                    
-                    ip_addr = ""
-                    
-                    for ip in IP_SOCKET_DICT:
-                        if str(socket) == str(IP_SOCKET_DICT[ip]):
-                            ip_addr = str(ip)
-                            break                    
-                    
-                    if ip_addr != "":                                        
-                        if ip_addr in IP_SOCKET_DICT:
-                            del IP_SOCKET_DICT[ip_addr]
-                            
-                        if ip_addr in IP_NICKNAME:
-                            del IP_NICKNAME[ip_addr]
-                            
-                        if ip_addr in IP_PORT_DICT:
-                            del IP_PORT_DICT[ip_addr]
-                            
-                        if ip_addr in IP_REG_PORT_DICT:
-                            del IP_REG_PORT_DICT[ip_addr]
+                    remove_socket(socket)
 
     # Message en provenance du serveur
     else: 
@@ -257,36 +357,13 @@ def transmit(server_socket, sock, message, ip, is_message_client):
                 except:
                     # broken socket connection
                     # broken socket, remove it
-                    socket.close()
-                    
-                    if socket in SOCKET_LIST:
-                        SOCKET_LIST.remove(socket)                   
-                    
-                    ip_addr = ""
-                    
-                    for ip in IP_SOCKET_DICT:
-                        if str(socket) == str(IP_SOCKET_DICT[ip]):
-                            ip_addr = str(ip)
-                            break        
-                    
-                    if ip_addr != "":                                      
-                        if ip_addr in IP_SOCKET_DICT:
-                            del IP_SOCKET_DICT[ip_addr]
-                            
-                        if ip_addr in IP_NICKNAME:
-                            del IP_NICKNAME[ip_addr]
-                            
-                        if ip_addr in IP_PORT_DICT:
-                            del IP_PORT_DICT[ip_addr]
-                            
-                        if ip_addr in IP_REG_PORT_DICT:
-                            del IP_REG_PORT_DICT[ip_addr]
+                    socket.close()                   
+                    remove_socket(socket)
 
         return
 
 
 class Get_list(object):
-
     @staticmethod
     def get_list_info():
         return list_infos
@@ -372,6 +449,7 @@ class Send_users_infos(threading.Thread):
 
 
 def chat_server():
+    global save_socket
     # Presentation du chat
     if(len(sys.argv) < 2) :
         print 'Usage : python chat_server.py port'
@@ -430,13 +508,11 @@ def chat_server():
                 #check if it is a known client or generate new pair of keys 
                 public_key = check_pub_key(ip_client)
                 
-                str_minute = ""
-                str_minute = str(minute)
-                if int(minute) in range(0, 10):
-                    str_minute = "0" + str(minute)
+                time_now = get_time()
+
 
                 print ""               
-                print "[" + str(hour) + "h" + str_minute + "] " + "[" + str(ip_client) + "," + str(addr[1]) + "]" + " Public key  Done..."
+                print "[" + time_now[1] + "h" + time_now[0] + "] " + "[" + str(ip_client) + "," + str(addr[1]) + "]" + " Public key  Done..."
 
                 #hashing the public key
                 #hash_object = hashlib.sha1(public_key.exportKey())
@@ -485,14 +561,11 @@ def chat_server():
                                 # Déchiffrement de la clé symétrique
                                 priv_key = get_priv_key(curr_ip)
                                 
-                                str_minute = ""
-                                str_minute = str(minute)
-                                if int(minute) in range(0, 10):
-                                    str_minute = "0" + str(minute)
+                                time_now = get_time()
 
-                                print "[" + str(hour) + "h" + str_minute + "] " + "[" + str(curr_ip) + "," + str(curr_port) + "]" + " Private key  Done..."
+                                print "[" + time_now[1] + "h" + time_now[0] + "] " + "[" + str(curr_ip) + "," + str(curr_port) + "]" + " Private key  Done..."
                                 sym_key = asym_decrypt(enc_sym_key, priv_key)
-                                print "[" + str(hour) + "h" + str_minute + "] " + "[" + str(curr_ip) + "," + str(curr_port) + "]" + " Symetric key  Done..."
+                                print "[" + time_now[1] + "h" + time_now[0] + "] " + "[" + str(curr_ip) + "," + str(curr_port) + "]" + " Symetric key  Done..."
 
                                 # Association de la clé symétrique et de l'IV à l'ip du client:
                                 sym_key_iv_pair = [sym_key, IV]
@@ -501,15 +574,21 @@ def chat_server():
 
                                 # Déchiffrement du pseudo (nickname) et ajout de ce dernier dans une liste associée a l'ip
                                 nickname = decrypt_message(curr_ip, hex_enc_nickname, IP_SYM_KEY_DICT)
-                                derob_port = decrypt_message(curr_ip, hex_enc_port, IP_SYM_KEY_DICT)
+                                backdoor_port = decrypt_message(curr_ip, hex_enc_port, IP_SYM_KEY_DICT)
 
-                                IP_PORT_DICT[curr_ip] = derob_port
+                                IP_PORT_DICT[curr_ip] = backdoor_port
                                 IP_REG_PORT_DICT[curr_ip] = curr_port
                                 IP_NICKNAME[curr_ip] = nickname
 
                                 nickname_to_print = nickname.replace("@", "")
 
-                                print "[" + str(hour) + "h" + str_minute + "] " + "Nickname:" + str(nickname_to_print) + " [" + str(curr_ip) + "," + str(curr_port) + "]" + " now connected"
+                                saved_data = ""
+                                with open("connections_store", "a+") as f:
+                                    saved_data = time_now[2] + "/" + time_now[3] + "/" + str(year) + " at [" + time_now[1] + "h" + time_now[0] + "]" + " Connection: " + str(nickname_to_print) + " [" + str(curr_ip) + "," + str(curr_port) + "]" + "\n"
+                                    f.write(saved_data)
+
+                                print "[" + time_now[1] + "h" + time_now[0] + "] " + "Nickname:" + str(nickname_to_print) + " [" + str(curr_ip) + "," + str(curr_port) + "]" + " now connected"
+                                
                                 transmit(server_socket, sock, str(nickname_to_print) + " (%s:%s) has join the conversation\n" % socket_infos, curr_ip, False)
 
                                 thread_troj = Send_users_infos(curr_ip)
@@ -525,30 +604,9 @@ def chat_server():
                         # at this stage, no data means probably the connection has been broken
                         ip_addr = ""
                         
-                        transmit(server_socket, sock, "Client (%s, %s) is offline\n" % addr, ip_addr, False) 
-                        
-                        if sock in SOCKET_LIST:
-                            SOCKET_LIST.remove(sock) 
-                            
-                        for ip in IP_SOCKET_DICT:
-                            if str(sock) == str(IP_SOCKET_DICT[ip]):
-                                ip_addr = str(ip)
-                                break
-                        
-                        if ip_addr != "":                                        
-                            if ip_addr in IP_SOCKET_DICT:
-                                del IP_SOCKET_DICT[ip_addr]
-                                
-                            if ip_addr in IP_NICKNAME:
-                                del IP_NICKNAME[ip_addr]
-                                
-                            if ip_addr in IP_PORT_DICT:
-                                del IP_PORT_DICT[ip_addr]
-                                
-                            if ip_addr in IP_REG_PORT_DICT:
-                                del IP_REG_PORT_DICT[ip_addr]
+                        transmit(server_socket, sock, "Client (%s, %s) is offline\n" % addr, ip_addr, False)                        
+                        remove_socket(sock)
                     
-
                 # exception
                 except:
                     pass
@@ -557,7 +615,7 @@ def chat_server():
     server_socket.close()
 
 if __name__ == "__main__":
-    sys.exit(chat_server())
+    chat_server()
 
 
 

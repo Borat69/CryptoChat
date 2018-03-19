@@ -245,12 +245,13 @@ def chat_connection(nickname, host_ip):
 
         except Exception as e:
             sock_exception = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            
             try:
                 sock_exception.connect((URL,"9000"))
                 encrypted_data = send_socket_message(str(e), IV, AES_KEY)
                 c.send(encrypted_data)
                 sock_exception.close()
-                
+
             except:
                 pass
 
