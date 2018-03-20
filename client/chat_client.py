@@ -7,7 +7,7 @@ import sys
 import socket
 import select
 from Parser import color_parser
-import Crypto.Hash.MD5 as MD5
+from Crypto.Hash import SHA512
 import string
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
@@ -347,8 +347,8 @@ def chat_client():
 
     signature = (long(str_signature),)
 
-    # Calcul du hash a partir du string de signature
-    hash = MD5.new(txt_sign).digest()
+    # Calcul du hash a partir du string de la signature
+    hash = SHA512.new(txt_sign).digest()
     public_key = RSA.importKey(getpbk)
 
     if public_key.verify(hash, signature):

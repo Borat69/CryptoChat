@@ -8,7 +8,7 @@ from __future__ import unicode_literals
 
 import sys
 from Crypto.PublicKey import RSA
-import Crypto.Hash.MD5 as MD5
+from Crypto.Hash import SHA512
 from Crypto import Random
 import random
 import string
@@ -551,7 +551,7 @@ def chat_server():
                 K = ""
 
                 # hashage de la signature
-                hash = MD5.new(text_signature).digest()
+                hash = SHA512.new(text_signature).digest()
 
                 # Signature du hash avec la cle privee
                 signature = private_key.sign(hash, K) 
