@@ -440,7 +440,7 @@ def chat_client():
 
     else:
         print "Curious... Your public key is not verified\n"
-        print "There is maybe a probleme with the server or it\'s a pirate!"
+        print "There is maybe a problem with the server or it\'s a pirate!"
         print "Please contact the admins."
         sys.exit()
 
