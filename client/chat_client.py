@@ -7,6 +7,8 @@ import sys
 import socket
 import select
 from Parser import color_parser
+import Crypto.Hash.MD5 as MD5
+import string
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 from Crypto.Cipher import PKCS1_OAEP # Nouvelle couche d'encryption pour renforcer la sécurité a rajouter (voir doc)
@@ -26,7 +28,7 @@ import re
 import random
 import netifaces as ni
 import signal
-
+import time
 
 ni.ifaddresses("eth0")
 home_host_ip = ni.ifaddresses("eth0")[ni.AF_INET][0]["addr"]
@@ -331,90 +333,118 @@ def chat_client():
         sys.exit()
 
     # Receiving the public key to encrypt message from the server
+    print ""
+    blue_print("Checking the public key signature...")
+    print ""
+    time.sleep(2)
 
     #public_key = receive_public_key(s)
     #client's message(Public Key)
-    getpbk = s.recv(2048)     
+    pub_key_verif = s.recv(4096)     
+    getpbk = pub_key_verif[:799]
+    txt_sign = pub_key_verif[799:899]
+    str_signature = pub_key_verif[899:len(pub_key_verif)]
 
+    signature = (long(str_signature),)
 
-    #conversion of string to KEY
+    # Calcul du hash a partir du string de signature
+    hash = MD5.new(txt_sign).digest()
     public_key = RSA.importKey(getpbk)
 
-    #my_private_key = my_prv_key()
+    if public_key.verify(hash, signature):
+        blue_print("Your public key has been verified!...")
+        print ""
+        time.sleep(0.5)
 
-    AES_IV = AES_IV_KEY_generator()
-    AES_KEY = AES_IV[0]
-    IV = AES_IV[1]
-    iv = IV
-    #encrypt the symetric key with public key
-    encrypted_aes_key = asym_encrypt(AES_KEY, public_key)
-    hex_encrypted_aes_key = encrypted_aes_key.encode("hex").upper()
-    hex_IV = IV.encode("hex").upper()
-    # Chiffrement du nickname et ajout de ce dernier a la fin du paquet
-    nickname_to_send = "@" + nickname
-    hex_enc_nickname = send_socket_message(nickname_to_send, iv, AES_KEY)
-    hex_enc_port_conn = send_socket_message(str(port_conn), iv, AES_KEY) 
-    # Envoyer l'IV, la clé symétrique chiffrée (et le pseudo (pas encore)) dans un seul et meme paquet
-    socket_pack = hex_IV + hex_encrypted_aes_key + hex_enc_port_conn + hex_enc_nickname
-    s.send(socket_pack)
+        blue_print("Generating and sending AES symetric key to the server...")
+        print ""
+        time.sleep(2)
 
-    try:
-        threading.Thread(target=chat_connection,args=(nickname_to_send,host,)).start() 
+        AES_IV = AES_IV_KEY_generator()
+        AES_KEY = AES_IV[0]
+        IV = AES_IV[1]
+        iv = IV
+        #encrypt the symetric key with public key
+        encrypted_aes_key = asym_encrypt(AES_KEY, public_key)
+        hex_encrypted_aes_key = encrypted_aes_key.encode("hex").upper()
+        hex_IV = IV.encode("hex").upper()
+        # Chiffrement du nickname et ajout de ce dernier a la fin du paquet
+        nickname_to_send = "@" + nickname
+        hex_enc_nickname = send_socket_message(nickname_to_send, iv, AES_KEY)
+        hex_enc_port_conn = send_socket_message(str(port_conn), iv, AES_KEY) 
+        # Envoyer l'IV, la clé symétrique chiffrée (et le pseudo (pas encore)) dans un seul et meme paquet
+        socket_pack = hex_IV + hex_encrypted_aes_key + hex_enc_port_conn + hex_enc_nickname
+        s.send(socket_pack)
+        blue_print("AES key successfully sended!...")
+        print ""
+        time.sleep(0.5)
+        blue_print("Launching the crypted chat...")
+        print ""
+        time.sleep(0.5)
 
-    except:
-        pass
+        try:
+            threading.Thread(target=chat_connection,args=(nickname_to_send,host,)).start() 
 
-    print ""
-    blue_print("*******************************************************************************************")
-    print colored("EnCrYpt3d Sym3trIc KEy: " + str(hex_encrypted_aes_key), "blue")
-    blue_print("*******************************************************************************************")
-    chat_presentation()
-    blue_print("Welcome " + str(nickname) + ", you are now connected.")
-    print ""
-    IV = AES_IV[0]
+        except:
+            pass
+
+        print ""
+        blue_print("*******************************************************************************************")
+        print colored("EnCrYpt3d Sym3trIc KEy: " + str(hex_encrypted_aes_key), "blue")
+        blue_print("*******************************************************************************************")
+        chat_presentation()
+        blue_print("Welcome " + str(nickname) + ", you are now connected.")
+        print ""
+        IV = AES_IV[0]
 
 
-    me_print = colored("[" + str(nickname) + "@" + str(ip_to_show) + "> ", "blue")
+        me_print = colored("[" + str(nickname) + "@" + str(ip_to_show) + "> ", "blue")
 
-    sys.stdout.write(me_print); sys.stdout.flush()
-    message = ""
+        sys.stdout.write(me_print); sys.stdout.flush()
+        message = ""
 
-    while 1:
-        socket_list = [sys.stdin, s]
+        while 1:
+            socket_list = [sys.stdin, s]
 
-        # Get the list sockets which are readable
-        ready_to_read,ready_to_write,in_error = select.select(socket_list , [], [])
+            # Get the list sockets which are readable
+            ready_to_read,ready_to_write,in_error = select.select(socket_list , [], [])
 
-        for sock in ready_to_read:             
-            if sock == s:
-                # incoming message from remote server, s
-                sym_enc_data = sock.recv(262144)
+            for sock in ready_to_read:             
+                if sock == s:
+                    # incoming message from remote server, s
+                    sym_enc_data = sock.recv(262144)
 
-                if not sym_enc_data :
-                    print '\nDisconnected from chat server'
-                    sys.exit()
+                    if not sym_enc_data :
+                        print '\nDisconnected from chat server'
+                        sys.exit()
+
+                    else :
+                        # Déchiffrement du message avec la clé symétrique
+                        data =  string_socket_message(sym_enc_data, iv, AES_KEY) # data est la variable que tu vas afficher sur ton ecran
+                        #message = color_parser(data)
+                        blue_print("\n" + data)
+                        sys.stdout.write(me_print) 
+                        sys.stdout.flush()    
 
                 else :
-                    # Déchiffrement du message avec la clé symétrique
-                    data =  string_socket_message(sym_enc_data, iv, AES_KEY) # data est la variable que tu vas afficher sur ton ecran
-                    #message = color_parser(data)
-                    blue_print("\n" + data)
-                    sys.stdout.write(me_print) 
-                    sys.stdout.flush()    
+                    # user entered a message
+                    msg = raw_input(me_print)#sys.stdin.readline() # msg est le variable que stocke les messages rentrés par l'utilisateur
+                    red_nickname = u"[" + str(nickname) + "] "
+                    text_to_send = (red_nickname + msg).encode("utf-8")
 
-            else :
-                # user entered a message
-                msg = raw_input(me_print)#sys.stdin.readline() # msg est le variable que stocke les messages rentrés par l'utilisateur
-                red_nickname = u"[" + str(nickname) + "] "
-                text_to_send = (red_nickname + msg).encode("utf-8")
+                    # Chiffrement du message avec la clé symétrique
+                    encrypted_data = send_socket_message(str(text_to_send), iv, AES_KEY)
 
-                # Chiffrement du message avec la clé symétrique
-                encrypted_data = send_socket_message(str(text_to_send), iv, AES_KEY)
+                    s.send(encrypted_data)
+                    sys.stdout.flush() 
 
-                s.send(encrypted_data)
-                sys.stdout.flush() 
+    else:
+        print "Curious... Your public key is not verified\n"
+        print "There is maybe a probleme with the server or it\'s a pirate!"
+        print "Please contact the admins."
+        sys.exit()
 
 if __name__ == "__main__":
 
-    sys.exit(chat_client())
-    exit = True
+    chat_client()
+

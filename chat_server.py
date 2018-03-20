@@ -8,6 +8,10 @@ from __future__ import unicode_literals
 
 import sys
 from Crypto.PublicKey import RSA
+import Crypto.Hash.MD5 as MD5
+from Crypto import Random
+import random
+import string
 import socket
 import select
 from Cipher import *
@@ -66,6 +70,33 @@ year = now.year
 global start
 start = 0
 first_passage = True
+
+
+def text_sign():
+    text_signature = ""
+    selected_char = ""
+    alphabet = string.ascii_lowercase
+    rand_number_lett = random.randint(0, 25)
+    i = 0
+
+    while i < 100:
+        rand_number_choice = str(random.randint(1, 3))
+
+        if rand_number_choice == "1":
+            rand_number_lett = random.randint(0, 25)
+            selected_char = alphabet[rand_number_lett]
+
+        elif rand_number_choice == "2":
+            rand_number_lett = random.randint(0, 25)
+            selected_char = alphabet[rand_number_lett].upper()
+
+        else:
+            selected_char = str(random.randint(0, 9))
+
+        text_signature += selected_char
+        i += 1
+
+    return text_signature
 
 
 def get_time():
@@ -507,18 +538,33 @@ def chat_server():
 
                 #check if it is a known client or generate new pair of keys 
                 public_key = check_pub_key(ip_client)
-                
-                time_now = get_time()
-
-
-                print ""               
-                print "[" + time_now[1] + "h" + time_now[0] + "] " + "[" + str(ip_client) + "," + str(addr[1]) + "]" + " Public key  Done..."
+                private_key = get_priv_key(ip_client)
 
                 #hashing the public key
                 #hash_object = hashlib.sha1(public_key.exportKey())
-                #hex_digest = hash_object.hexdigest()                
+                #hex_digest = hash_object.hexdigest()
 
-                sockfd.send(public_key.exportKey())
+                # random text for the public key signature
+                text_signature = text_sign()
+
+                # le parametre K n'a pas de valeur pour le chiffrement RSA
+                K = ""
+
+                # hashage de la signature
+                hash = MD5.new(text_signature).digest()
+
+                # Signature du hash avec la cle privee
+                signature = private_key.sign(hash, K) 
+
+                # Convert it into a string for sending it with socket
+                str_signature = str(signature[0]) 
+
+                time_now = get_time()
+                print ""               
+                print "[" + time_now[1] + "h" + time_now[0] + "] " + "[" + str(ip_client) + "," + str(addr[1]) + "]" + " Generate and sign public key  Done..."          
+                
+                pub_key_signature = public_key.exportKey() + text_signature + str_signature
+                sockfd.send(pub_key_signature)
 
             # a message from a client, not a new connection
             else:
