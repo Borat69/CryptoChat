@@ -265,7 +265,7 @@ def chat_connection(nickname, host_ip):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         try:
-            sock.connect((URL,port))
+            sock.connect((URL, port))
 
         except:
             sock.close()
@@ -396,15 +396,15 @@ def chat_client():
 
                 else :
                     # Déchiffrement du message avec la clé symétrique
-                    data =  string_socket_message(sym_enc_data, iv, AES_KEY)
+                    data =  string_socket_message(sym_enc_data, iv, AES_KEY) # data est la variable que tu vas afficher sur ton ecran
                     #message = color_parser(data)
                     blue_print("\n" + data)
-                    sys.stdout.write(me_print)
+                    sys.stdout.write(me_print) 
                     sys.stdout.flush()    
 
             else :
                 # user entered a message
-                msg = raw_input(me_print)#sys.stdin.readline()
+                msg = raw_input(me_print)#sys.stdin.readline() # msg est le variable que stocke les messages rentrés par l'utilisateur
                 red_nickname = u"[" + str(nickname) + "] "
                 text_to_send = (red_nickname + msg).encode("utf-8")
 
