@@ -50,7 +50,6 @@ def blue_print(str_to_print):
     print colored(str(str_to_print), "blue")
 
 def chat_presentation():
-    print ""
     blue_print("")
     blue_print("#######################################################################################################################################################################################################")
     blue_print("#                                                                     @                                                                                    0                                          #")
@@ -68,6 +67,22 @@ def chat_presentation():
     blue_print("#######################################################################################################################################################################################################")
     blue_print(" ...................................................................................... bY b0r@T And mAnU ................................................................................ VeR$i0n: 2.0")
     blue_print("")
+
+def chat_sobre_presentation():
+    blue_print("")
+    blue_print("          #%$0$$@   0")
+    blue_print("  @@     @#%$0$$@@     @@")
+    blue_print("  @% 0   #$#%$0$$$   0 $@")
+    blue_print("       $ @$%$0$$%# @")
+    blue_print("         #  #%$  $")
+    blue_print("    $    #%$0 $#$@       @")
+    blue_print("          $$%$$0$           0$%0@  $0@%@  @%$0%  $0$%@  %0$0%   %#0@$  %")
+    blue_print("           #$$$#            %        §      @    #   0  $    $  $      0")
+    blue_print("        #  0@%#0  $         $        0      $    #$@0$  $    @  0%$0@  @")
+    blue_print("  @$ @     0$#$0     $ %@   @        $      #    0   #  @    0  %      $")
+    blue_print("  @@                   @@   %$@0@  0@$%@    0    $   $  0#$%@   @0%$#  #0$@$")
+    blue_print("                                                                       ")
+    blue_print("****************************************** A secure AES encrypted chat IRC *")
 
 def asym_encrypt(sym_key, pub_key):
     asym_cipher = PKCS1_OAEP.new(pub_key)
@@ -388,13 +403,13 @@ def chat_client():
         except:
             pass
 
-        print ""
         blue_print("*******************************************************************************************")
         print colored("EnCrYpt3d Sym3trIc KEy: " + str(hex_encrypted_aes_key), "blue")
         blue_print("*******************************************************************************************")
-        chat_presentation()
+        chat_sobre_presentation()
         blue_print("Welcome " + str(nickname) + ", you are now connected.")
         print ""
+
         IV = AES_IV[0]
 
 
@@ -412,7 +427,7 @@ def chat_client():
             for sock in ready_to_read:             
                 if sock == s:
                     # incoming message from remote server, s
-                    sym_enc_data = sock.recv(262144)
+                    sym_enc_data = sock.recv(2048)
 
                     if not sym_enc_data :
                         print '\nDisconnected from chat server'
@@ -439,9 +454,9 @@ def chat_client():
                     sys.stdout.flush() 
 
     else:
-        print "Curious... Your public key is not verified\n"
+        print "Curious... Your public key is not verified..."
         print "There is maybe a problem with the server or it\'s a pirate!"
-        print "Please contact the admins."
+        print "Please try again or contact the admins."
         sys.exit()
 
 if __name__ == "__main__":

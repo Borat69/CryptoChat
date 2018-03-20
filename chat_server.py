@@ -35,7 +35,7 @@ sys.setdefaultencoding('utf8')
 # Variables globales
 HOST = ''
 SOCKET_LIST = []
-RECV_BUFFER = 262144
+RECV_BUFFER = 2048
 PORT = 9009
 
 global IP_FIRST_CONNECTION_DICT
