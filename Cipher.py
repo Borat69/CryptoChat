@@ -5,7 +5,10 @@ import sys
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Cipher import AES
+from Crypto.Hash import SHA512
 from Crypto import Random
+import random
+import string
 import pickle
 import os
 from glob import glob
@@ -16,6 +19,48 @@ from os.path import expanduser
 
 reload(sys)
 sys.setdefaultencoding('utf8')
+
+
+# Renvoie la signature au format string pour pouvoir etre envoyée par socket
+def get_pub_key_signature(text_signature, private_key):
+    # le parametre K n'a pas de valeur pour le chiffrement RSA
+    K = ""
+
+    # hashage de la signature
+    hash = SHA512.new(text_signature).digest()
+
+    # Signature du hash avec la cle privee
+    signature = private_key.sign(hash, K)
+
+    return str(signature[0])
+
+
+# Génère un string random pour la signature de la clé publique
+def text_sign():
+    text_signature = ""
+    selected_char = ""
+    alphabet = string.ascii_lowercase
+    rand_number_lett = random.randint(0, 25)
+    i = 0
+
+    while i < 100:
+        rand_number_choice = str(random.randint(1, 3))
+
+        if rand_number_choice == "1":
+            rand_number_lett = random.randint(0, 25)
+            selected_char = alphabet[rand_number_lett]
+
+        elif rand_number_choice == "2":
+            rand_number_lett = random.randint(0, 25)
+            selected_char = alphabet[rand_number_lett].upper()
+
+        else:
+            selected_char = str(random.randint(0, 9))
+
+        text_signature += selected_char
+        i += 1
+
+    return text_signature
 
 
 def AES_IV_KEY_generator():
@@ -44,6 +89,7 @@ def sym_decrypt(enc_data, iv, AES_key):
 
     return symetric_cipher.decrypt(enc_data)
 
+
 # Chiffrement asymétrique RSA
 def asym_encrypt(sym_key, pub_key):
     asym_cipher = PKCS1_OAEP.new(pub_key)
@@ -60,23 +106,29 @@ def asym_decrypt(enc_sym_key, priv_key):
 def socket_message(str_message, iv, AES_key):
     cipher_text = sym_encrypt(str_message, iv, AES_key)
     hex_cipher_text = cipher_text.encode("hex").upper()
-    
+
     return hex_cipher_text
+
 
 def string_socket_message(hex_enc_data, iv, AES_key):
     enc_data = hex_enc_data.decode("hex")
     message = sym_decrypt(enc_data, iv, AES_key)
     str_message = str(message)
-    
+
     return str_message
 
 
-def generate_keys(ip):
+def generate_keys(ip, auth):
     rsa_keys = rsa_keys_generator()
     private_key = rsa_keys[1]
     public_key = rsa_keys[0]
 
-    folder_name = "client_" + str(ip)
+    if auth:
+        folder_name = "client_auth_" + str(ip)
+
+    else:
+        folder_name = "client_" + str(ip)
+
     folder_creation_command = "mkdir " + folder_name
     os.system(folder_creation_command)
 
@@ -105,16 +157,25 @@ def generate_keys(ip):
     return public_key
 
 
-def get_priv_key(ip):
-    priv_key_path = "client_" + str(ip) + "/private_key.pem" 
+def get_priv_key(ip, auth):
+    if auth:
+        priv_key_path = "client_auth_" + str(ip) + "/private_key.pem"
+
+    else:
+        priv_key_path = "client_" + str(ip) + "/private_key.pem"
+
     pv_key_file = open(priv_key_path, "r+")
     pv_key = RSA.importKey(pv_key_file.read())
     pv_key_file.close
 
     return pv_key
 
-def get_pub_key(ip):
-    pub_key_path = "client_" + str(ip) + "/public_key.pub" 
+def get_pub_key(ip, auth):
+    if auth:
+        pub_key_path = "client_auth_" + str(ip) + "/public_key.pub"
+    else:
+        pub_key_path = "client_" + str(ip) + "/public_key.pub"
+
     pub_key_file = open(pub_key_path, "r+")
     pub_key = RSA.importKey(pub_key_file.read())
     pub_key_file.close
@@ -122,20 +183,28 @@ def get_pub_key(ip):
     return pub_key
 
 # Est ce que la clé publique existe déjà pour cet adresse ip? Ou faut-il créer une nouvelle paire?
-def check_pub_key(ip):
-    path_folder = "client_" + str(ip)
-    
+def check_pub_key(ip, auth):
+    if auth:
+        path_folder = "client_auth_" + str(ip)
+
+    else:
+        path_folder = "client_" + str(ip)
+
     if os.path.exists(path_folder):
         pub_key_path = path_folder + "/" + "public_key.pub"
         pub_key_file = open(pub_key_path, "r+")
         pub_key = RSA.importKey(pub_key_file.read())
         pub_key_file.close
-        
+
         return pub_key
-    
+
     else:
-        new_pub_key = generate_keys(ip)
-    
+        if auth:
+            new_pub_key = generate_keys(ip, True)
+
+        else:
+            new_pub_key = generate_keys(ip, False)
+
     return new_pub_key
 
 # Déchiffre un message recu sous format hexadécimal
@@ -144,19 +213,19 @@ def decrypt_message(ip, hex_enc_data, dict_key_iv):
     list_sym_key_iv = dict_key_iv[ip]
     sym_key = list_sym_key_iv[0]
     IV = list_sym_key_iv[1]
-    
+
     str_decrypted_message = string_socket_message(hex_enc_data, IV, sym_key)
-    
+
     return str_decrypted_message
 
 
 # Chiffre un message sous format string et l'encode en hexadécimal
-def encrypt_message(ip, data, dict_key_iv):
+def encrypt_message(ip, data, dict_key_iv, auth):
     list_sym_key_iv = dict_key_iv[ip]
     sym_key = list_sym_key_iv[0]
     IV = list_sym_key_iv[1]  
-    pub_key = get_pub_key(ip)
+    pub_key = get_pub_key(ip, auth)
 
     hex_ciphertext = socket_message(str(data), IV, sym_key)
-    
+
     return hex_ciphertext
