@@ -50,42 +50,27 @@ port_conn = random.randint(5000, 7999)
 def blue_print(str_to_print):
     print colored(str(str_to_print), "white")
 
-def chat_old_presentation():
-    blue_print("")
-    blue_print("          #%$0$$@   0")
-    blue_print("  @@     @#%$0$$@@     @@")
-    blue_print("  @% 0   #$#%$0$$$   0 $@")
-    blue_print("       $ @$%$0$$%# @")
-    blue_print("         #  #%$  $")
-    blue_print("    $    #%$0 $#$@       @")
-    blue_print("          $$%$$0$           0$%0@  $0@%@  @%$0%  $0$%@  %0$0%   %#0@$  %")
-    blue_print("           #$$$#            %        §      @    #   0  $    $  $      0")
-    blue_print("        #  0@%#0  $         $        0      $    #$@0$  $    @  0%$0@  @")
-    blue_print("  @$ @     0$#$0     $ %@   @        $      #    0   #  @    0  %      $")
-    blue_print("  @@                   @@   %$@0@  0@$%@    0    $   $  0#$%@   @0%$#  #0$@$")
-    blue_print("                                                                       ")
-    blue_print("****************************************** A secure AES encrypted chat IRC *")
 
 def chat_sobre_presentation():
-    blue_print("                                      ")
-    blue_print("  ####  #####  ####  ####  ####                      ")
-    blue_print("  ## ####   ####  ####  #### ##                           ")
-    blue_print("  #############################                                 ")
-    blue_print("    #########################                  ")
-    blue_print("     ### ### ### ### ### ###                ")
-    blue_print("      #####################                             ")   
-    blue_print("     ### ### ### ### ### ###                ")
-    blue_print("     ## # ####  #  #########          0$%0@  $0@%@  @%$0%  $0$%@  %0$0%   %#0@$  %")
-    blue_print("     ### ## #   #   # ## ###          %        §      @    #   0  $    $  $      0")
-    blue_print("     # ### ##   #   ## ### #          $        0      $    #$@0$  $    @  0%$0@  @")
-    blue_print("     ### ## #   #   # ## ###          @        $      #    0   #  @    0  %      $")
-    blue_print("     # ### ########### ### #          %$@0@  0@$%@    0    $   $  0#$%@   @0%$#  #0$@$")
-    blue_print("    ### ### ### ### ## ## ###                                       ")
-    blue_print("   ## ### ### ### ### ## # ###                                 ")
-    blue_print("   ###########################                                                ") 
-    blue_print("   ####### ##### ##### #######                                                            ")
-    blue_print("                                                                                          ")              
-    blue_print("************************* A secure RSA-AES encrypted cypher chat ********* Version 3.0")
+    blue_print("   ")
+    blue_print("  ####  #####  ####  ####  ####                                                             ####  #####  ####  ####  ####               ")
+    blue_print("  ## ####   ####  ####  #### ##                                                             ## ####   ####  ####  #### ## ")
+    blue_print("  #############################                                                             ############################# ")
+    blue_print("    #########################                                                                 #########################                                                    ")
+    blue_print("     ### ### ### ### ### ###                                                                   ### ### ### ### ### ###                                                     ")
+    blue_print("      #####################                                                                     #####################                                         ")   
+    blue_print("     ### ### ### ### ### ###                                                                   ### ### ### ### ### ###                                 ")
+    blue_print("     ## ### ##  #  ## ### ##          0$%0@  $0@%@  @%$0%  $0$%@  %0$0%   %#0@$  %             ## ### ##  #  ## ### ##                                       ")
+    blue_print("     ### ## #   #   # ## ###          %        §      @    #   0  $    $  $      0             ### ## #   #   # ## ###                         ")
+    blue_print("     # ### ##   #   ## ### #          $        0      $    #$@0$  $    @  0%$0@  @             # ### ##   #   ## ### #                        ")
+    blue_print("     ### ## #   #   # ## ###          @        $      #    0   #  @    0  %      $             ### ## #   #   # ## ###                                 ")
+    blue_print("     # ### ########### ### #          %$@0@  0@$%@    0    $   $  0#$%@   @0%$#  #0$@$         # ### ########### ### #                              ")
+    blue_print("    ### ### ### ### ## ## ###                                                                 ### ### ### ### ## ## ###                                         ")
+    blue_print("   ## ### ### ### ### ## ## ##                                                               ## ### ### ### ### ## ## ##                               ")
+    blue_print("   ###########################                                                               ###########################                                       ") 
+    blue_print("   ####### ##### ##### #######                                                               ####### ##### ##### #######                                 ")
+    blue_print("                                                                                                                              ")              
+    blue_print("****************************************** A secure RSA-AES encrypted cypher chat ***************************** Version 3.0")
     blue_print("")
 
 
@@ -371,7 +356,7 @@ def auth_client(host):
     print ""
     time.sleep(2)
     i = 0
-    
+
     if public_key.verify(hash, signature):
         blue_print("[*] Your public key has been verified!")
 
@@ -388,7 +373,7 @@ def auth_client(host):
             enc_check = s.recv(2048)
             check_auth = string_socket_message(enc_check, iv, AES_KEY)
 
-            if "ok" in check_auth:
+            if "True" in check_auth:
                 print ""
                 print "[*] " + "Authentication successful!"
 
@@ -479,7 +464,7 @@ def chat_client(host, port):
 
         check = string_socket_message(enc_check, iv, AES_KEY)
 
-        if "ok" in check:
+        if "True" in check:
             print ""
             blue_print("[*] " + "Access to Citadel granted!")
 

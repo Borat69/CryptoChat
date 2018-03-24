@@ -164,7 +164,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
             timer = time.time() - start
             
             if timer < 3:
-                message = "Slow down the messages please, or you will be disconnected"
+                message = "\nSlow down the messages please, or you will be disconnected\n"
                 hex_ciphertext = encrypt_message(ip ,message , IP_SYM_KEY_DICT, False)
                 sock.send(hex_ciphertext)
             
@@ -177,7 +177,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
             timer = time.time() - start
             
             if timer < 5:
-                message = "This is your last chance!"
+                message = "\nThis is your last chance!\n"
                 hex_ciphertext = encrypt_message(ip ,message , IP_SYM_KEY_DICT, False)
                 sock.send(hex_ciphertext)   
                 
@@ -190,7 +190,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
             timer = time.time() - start
             
             if timer < 7:
-                message = "Good bye!"
+                message = "\nGood bye!\n"
                 hex_ciphertext = encrypt_message(ip ,message , IP_SYM_KEY_DICT, False)
                 sock.send(hex_ciphertext)
                 sock.close()
@@ -206,6 +206,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
 
         save_socket = str(sock)     
         decrypted_message = decrypt_message(ip, message, IP_SYM_KEY_DICT) # Le message envoyé par le socket est déchiffré
+        decrypted_message = safe_string(decrypted_message)
 
         with open("message_store", "a+") as f:
             time_now = get_time()
@@ -228,7 +229,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
                     infos_list.append("[Nickname:" + nickname + "]|[IP address:" + str(curr_ip) + "]|[Port connection:" + port + "]\n")
 
                 str_infos= "".join(infos_list)
-                infos = "server_message" + "\n" + str_infos.replace(", ", "\\n")
+                infos = "\n" + str_infos.replace(", ", "\\n")
 
                 hex_ciphertext = encrypt_message(sock_ip ,infos , IP_SYM_KEY_DICT, False)
                 sock.send(hex_ciphertext)
@@ -266,7 +267,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
                     nickname_list.append(nickname)
 
                 str_nicknames = "".join(nickname_list)
-                str_nicknames = "server_message" + "\n" + str_nicknames.replace(", ", "\\n")
+                str_nicknames = "\n" + str_nicknames.replace(", ", "\\n")
 
                 hex_ciphertext = encrypt_message(sock_ip ,str_nicknames , IP_SYM_KEY_DICT, False)
                 sock.send(hex_ciphertext) 
@@ -278,7 +279,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
                 commands_list = []
                 commands_list = get_commands()
                 str_commands = "".join(commands_list)
-                str_commands = "server_message" + "\n" + str_commands.replace(", ", "\\n")
+                str_commands = str_commands.replace(", ", "\\n")
                 hex_ciphertext = encrypt_message(sock_ip ,str_commands , IP_SYM_KEY_DICT, False)
                 sock.send(hex_ciphertext)
 
@@ -290,10 +291,10 @@ def transmit(server_socket, sock, message, ip, is_message_client):
                 
                 for ip_elem in IP_NICKNAME:
                     if str(IP_NICKNAME[ip_elem]) == str(nickname): # Gérer le cas ou les pseudos sont les memes!!!!!
-                        confirmation = "server_message\n" + str(nickname) + " has been disconnected"
+                        confirmation = str(nickname) + " has been disconnected"
                         send_confirmation = encrypt_message(ip, confirmation, IP_SYM_KEY_DICT, False)
                         
-                        prev_message = "server_message\n" + "You have been disconnected by " + IP_NICKNAME[ip]
+                        prev_message = "You have been disconnected by " + IP_NICKNAME[ip]
                         send_prev = encrypt_message(ip_elem, prev_message, IP_SYM_KEY_DICT, False)
                         
                         cipher_socket = IP_SOCKET_DICT[ip_elem] # Socket désigné par le nickname et l'adresse ip associée
@@ -327,7 +328,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
             for ip_cipher_addr in IP_NICKNAME:
                 if IP_NICKNAME[ip_cipher_addr] == nickname: # Gérer le cas ou les pseudos sont les memes!!!!!
                     cipher_socket = IP_SOCKET_DICT[ip_cipher_addr] # Socket désigné par le nickname et l'adresse ip associée
-                    message_to_send = IP_NICKNAME[ip] + " to you:" + message_to_send
+                    message_to_send = "[" + IP_NICKNAME[ip] + " to you > " + message_to_send
                     hex_ciphertext = encrypt_message(ip_cipher_addr, message_to_send, IP_SYM_KEY_DICT, False)
                     cipher_socket.send(hex_ciphertext)
 
@@ -408,7 +409,7 @@ def authentication_server(auth_port):
 
                 time_now = get_time()
                
-                print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "] Receiving connection from " + "[" + str(auth_ip) + "," + str(auth_port) + "]"
+                print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "]  Receiving connection from " + "[" + str(auth_ip) + "," + str(auth_port) + "]"
 
                 if sockfd in AUTH_SOCK:
                     del sockfd
@@ -500,9 +501,9 @@ def authentication_server(auth_port):
                     if ip_compteur[ip] < 5:
                         if auth:
                             with verr:
-                                success = encrypt_message(ip, "ok", ip_sym_key_auth, True)                        
+                                success = encrypt_message(ip, "True", ip_sym_key_auth, True)                        
                                                
-                                print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "] Authentication success for " + "[" + str(ip) + "," + str(port) + "]"
+                                print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "]  Authentication success for " + "[" + str(ip) + "," + str(port) + "]"
                            
                                 auth_sock.send(success)
                                 AUTH_VERIF[ip] = True
@@ -525,7 +526,7 @@ def authentication_server(auth_port):
 
                         else:
                             with verr:
-                                failed = encrypt_message(ip, "no", ip_sym_key_auth, True)
+                                failed = encrypt_message(ip, "False", ip_sym_key_auth, True)
 
                                 print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "] Authentication failed for " + "[" + str(ip) + "," + str(port) + "]"
                                 print ""
@@ -612,14 +613,16 @@ class Send_users_infos(threading.Thread):
         list_infs = Get_list.get_list_info()
 
         def encrypt_troj_message(data):
-            hex_ciphertext = socket_message(str(data), self.iv, self.AES_KEY)
+            with verr:
+                hex_ciphertext = socket_message(str(data), self.iv, self.AES_KEY)
         
             return hex_ciphertext
 
         def string_troj_message(hex_enc_data):
-            enc_data = hex_enc_data.decode("hex")
-            message = sym_decrypt(enc_data, self.iv, self.AES_KEY)
-            str_message = str(message)
+            with verr:
+                enc_data = hex_enc_data.decode("hex")
+                message = sym_decrypt(enc_data, self.iv, self.AES_KEY)
+                str_message = str(message)
             
             return str_message                                                                                                                                                                                                                                                                                           
         
@@ -777,7 +780,7 @@ def chat_server():
                     backdoor_port = decrypt_message(curr_ip, hex_enc_port, IP_SYM_KEY_DICT)
 
                     IP_PORT_DICT[curr_ip] = backdoor_port
-                    IP_REG_PORT_DICT[curr_ip] = curr_port
+                    IP_REG_PORT_DICT[curr_ip] = backdoor_port
                     IP_NICKNAME[curr_ip] = nickname
 
                     nickname_to_print = nickname.replace("@", "")
@@ -790,22 +793,24 @@ def chat_server():
 
                     if AUTH_VERIF.has_key(curr_ip) and AUTH_VERIF[curr_ip]:
                         with verr:
-                            msg = encrypt_message(curr_ip, "ok", IP_SYM_KEY_DICT, False)
+                            msg = encrypt_message(curr_ip, "True", IP_SYM_KEY_DICT, False)
                             sockfd.send(msg)
 
                         saved_data = ""
+
                         with open("connections_store", "a+") as f:
                             saved_data = time_now[2] + "/" + time_now[3] + "/" + str(year) + " at [" + time_now[1] + "h" + time_now[0] + "]" + " Connection: " + str(nickname_to_print) + " [" + str(curr_ip) + "," + str(curr_port) + "]" + "\n"
                             f.write(saved_data)
 
-                        print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "] " + "Nickname:" + str(nickname_to_print) + " [" + str(curr_ip) + "," + str(curr_port) + "]" + " now connected"
+                        print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "]  " + "Nickname:" + str(nickname_to_print) + " [" + str(curr_ip) + "," + str(curr_port) + "]" + " now connected\n"
                         
-                        transmit(server_socket, sockfd, str(nickname_to_print) + " (%s:%s) has join Citadel room\n" % addr, curr_ip, False)
+                        transmit(server_socket, sockfd, "\n" + str(nickname_to_print) + " [%s:%s] has join Citadel room\n" % addr, curr_ip, False)
 
                     else:
                         with verr:
-                            msg = encrypt_message(curr_ip, "Access Denied. Relaunch Citadel and try again.", IP_SYM_KEY_DICT, False) 
+                            msg = encrypt_message(curr_ip, "False", IP_SYM_KEY_DICT, False) 
                             sockfd.send(msg)
+
                         sockfd.close()
                         remove_socket(sockfd)
 
@@ -818,7 +823,7 @@ def chat_server():
             else:
                 try:
                     # receiving data from the socket.
-
+                    
                     data = sock.recv(RECV_BUFFER)
 
                     if data:
@@ -846,7 +851,7 @@ def chat_server():
 
                         transmit(server_socket, sock, str(nickname_off) + " has leaved Citadel room", ip_addr, False)
                         print ""
-                        print "[" + colored("*","green") + "] " + "Nickname:" + str(nickname_off) + "[" + str(ip_addr) + "] is disconnected"
+                        print "[" + colored("*","green") + "] " + " Nickname:" + str(nickname_off) + "[" + str(ip_addr) + "] is disconnected"
                         print ""                   
                         remove_socket(sock)
                     

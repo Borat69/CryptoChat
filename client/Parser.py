@@ -61,3 +61,16 @@ def color_parser(string_data):
 
         return red_nickname, blue_message
 
+
+def safe_string(string):
+
+        if "é" or "à" or "ù" or "ê" or "â" or "è" in string:
+                new_i = string.replace("é","e")
+                new_i_1 = new_i.replace("à","a")
+                new_i_2 = new_i_1.replace("ù","u")
+                new_i_3 = new_i_2.replace("ê","e")
+                new_i_4 = new_i_3.replace("â","a")
+                new_i_5 = new_i_4.replace("è","e")
+
+        return new_i_5
+

@@ -10,7 +10,7 @@ sys.setdefaultencoding('utf8')
 
 
 COMMANDS_LIST = ["$get_nicknames_up", "$get_pop", "$get_all_infos", "$get_skull", "$get_skull_diffuse"]
-COMMANDS_LIST_HELP = ["$get_nicknames_up: get all nicknames of connected friends\n", "$get_pop @nickname: close the connection of a friend\n"]
+COMMANDS_LIST_HELP = ["\n$get_nicknames_up: get all nicknames of connected friends\n", "$get_pop @nickname: close the connection of a friend\n"]
 
 
 def get_commands():
@@ -62,7 +62,6 @@ def command_parser(decrypted_message):
                         break
                 
         command = "".join(command_chars)
-        print "command: " + str(command)
 
         if u"$help".encode("utf-8") == command:
                 command = "$help"
@@ -75,7 +74,20 @@ def command_parser(decrypted_message):
         if command not in COMMANDS_LIST:
                 return "Unknown"
                               
-        return command       
+        return command    
+
+
+def safe_string(string):
+
+        if "é" or "à" or "ù" or "ê" or "â" or "è" in string:
+                new_i = string.replace("é","e")
+                new_i_1 = new_i.replace("à","a")
+                new_i_2 = new_i_1.replace("ù","u")
+                new_i_3 = new_i_2.replace("ê","e")
+                new_i_4 = new_i_3.replace("â","a")
+                new_i_5 = new_i_4.replace("è","e")
+
+        return new_i_5  
 
 
 def arobase_parser(decrypted_message, is_arobase_message):
@@ -111,4 +123,4 @@ def arobase_parser(decrypted_message, is_arobase_message):
         nickname = "".join(nickname_chars)
         message_to_send = "".join(trunc_message)
         
-        return nickname, message_to_send
+        return nickname, safe_string(message_to_send)
