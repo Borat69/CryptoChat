@@ -404,7 +404,7 @@ def auth_client(host):
         enc_check = s.recv(2048)
         check_auth = string_socket_message(enc_check, iv, AES_KEY)
 
-        if check_auth == "Authentification successful!":
+        if check_auth == "True":
             print ""
             blue_print(" " + str(check_auth))
 

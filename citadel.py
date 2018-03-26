@@ -328,7 +328,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
             for ip_cipher_addr in IP_NICKNAME:
                 if IP_NICKNAME[ip_cipher_addr] == nickname: # Gérer le cas ou les pseudos sont les memes!!!!!
                     cipher_socket = IP_SOCKET_DICT[ip_cipher_addr] # Socket désigné par le nickname et l'adresse ip associée
-                    message_to_send = "[" + IP_NICKNAME[ip] + " to you > " + message_to_send
+                    message_to_send = "[" + IP_NICKNAME[ip] + " to you> " + message_to_send
                     hex_ciphertext = encrypt_message(ip_cipher_addr, message_to_send, IP_SYM_KEY_DICT, False)
                     cipher_socket.send(hex_ciphertext)
 
