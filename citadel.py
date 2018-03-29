@@ -26,6 +26,7 @@ import datetime
 from dessin import *
 from Database import *
 from termcolor import colored
+import shutil
 
 verr = RLock()
 
@@ -424,8 +425,8 @@ def authentication_server(auth_port):
                 auth_ip_sock[auth_ip] = sockfd
 
                 #check if it is a known client or generate new pair of keys 
-                public_key = check_pub_key(auth_ip, True)
-                private_key = get_priv_key(auth_ip, True)
+                public_key = check_auth_pub_key(auth_ip, True)
+                private_key = get_auth_priv_key(auth_ip, True)
 
                 ip_compteur[auth_ip] = 0
 
@@ -451,8 +452,8 @@ def authentication_server(auth_port):
                     enc_sym_key = hex_enc_sym_key.decode("hex")
 
                     # Déchiffrement de la clé symétrique
-                    priv_key = get_priv_key(auth_ip, True)
-                    sym_key = asym_decrypt(enc_sym_key, priv_key)
+                    priv_key = get_auth_priv_key(auth_ip, True)
+                    sym_key = asym_auth_decrypt(enc_sym_key, priv_key)
 
                     # Association de la clé symétrique et de l'IV à l'ip du client:
                     sym_key_iv_pair = [sym_key, IV]
@@ -492,16 +493,26 @@ def authentication_server(auth_port):
                     ip = inf[0]
                     port = inf[1]
 
-                    txt = decrypt_message(ip, data, ip_sym_key_auth)
-                    auth = check_user("user", txt)
+                    user_passwd = decrypt_auth_message(ip, data, ip_sym_key_auth)
 
-                    # Gérer les histoires de compteur de tentative avec l'ip du client (a faire plus tard)
+                    if user_passwd.find("|"):
+                        sep_index = user_passwd.find("|")
+                        user = user_passwd[:sep_index]
+                        passwd = user_passwd[sep_index+1:len(user_passwd)]
+                        db = Database()
+                        auth = db.check_user(user, passwd, True)
+
+                    else:
+                        print "Data separator | for (user|passwd) not found"
+                        auth_sock.close()
+
+                    # Compteur de tentatives (limite:5)
                     time_now = get_time()
 
                     if ip_compteur[ip] < 5:
                         if auth:
                             with verr:
-                                success = encrypt_message(ip, "True", ip_sym_key_auth, True)                        
+                                success = encrypt_auth_message(ip, "True", ip_sym_key_auth, True)                        
                                                
                                 print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "]  Authentication success for " + "[" + str(ip) + "," + str(port) + "]"
                            
@@ -526,7 +537,7 @@ def authentication_server(auth_port):
 
                         else:
                             with verr:
-                                failed = encrypt_message(ip, "False", ip_sym_key_auth, True)
+                                failed = encrypt_auth_message(ip, "False", ip_sym_key_auth, True)
 
                                 print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "] Authentication failed for " + "[" + str(ip) + "," + str(port) + "]"
                                 print ""
@@ -661,10 +672,20 @@ class Send_users_infos(threading.Thread):
         self.stop()
 
 
+def delete_fold():
+    for dir_name in os.listdir("."):
+        if str(dir_name).startswith('client_'):
+            shutil.rmtree(dir_name)
+
+
 def chat_server():
     global threads
     global save_socket
     # Presentation du chat
+
+    #Fait le menage dans le dossier pour renouveler les pairs de cles 
+    delete_fold()
+
     if(len(sys.argv) < 3) :
         print 'Usage : python chat_server.py room_port authentication_port'
         sys.exit()
@@ -697,6 +718,12 @@ def chat_server():
                 sockfd, addr = server_socket.accept()
                 curr_ip = addr[0]
                 curr_port = addr[0]
+
+                if AUTH_VERIF.has_key(curr_ip):
+                    pass
+
+                else:
+                    break
                 
                 if IP_FIRST_CONNECTION_DICT.has_key(curr_ip):
                     del IP_FIRST_CONNECTION_DICT[curr_ip]
@@ -847,6 +874,7 @@ def chat_server():
                             if sock == IP_SOCKET_DICT[ip]:
                                 ip_addr = ip_client_addr
                                 break
+
                         nickname_off = IP_NICKNAME[ip_addr]
 
                         transmit(server_socket, sock, str(nickname_off) + " has leaved Citadel room", ip_addr, False)

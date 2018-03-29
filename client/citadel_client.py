@@ -30,6 +30,7 @@ import netifaces as ni
 import signal
 import time
 import getpass
+import plateforme 
 
 ni.ifaddresses("eth0")
 home_host_ip = ni.ifaddresses("eth0")[ni.AF_INET][0]["addr"]
@@ -48,7 +49,8 @@ port_conn = random.randint(5000, 7999)
 
 
 def blue_print(str_to_print):
-    print colored(str(str_to_print), "white")
+    print str(str_to_print)
+    #print colored(str(str_to_print), "white")
 
 
 def chat_sobre_presentation():
@@ -148,7 +150,7 @@ def chat_connection(nickname, host_ip):
     port = port_conn
     AES_IV = AES_IV_KEY_generator()
     AES_KEY = AES_IV[0]
-    IV = AES_IV[1] 
+    IV = AES_IV[1]
 
     def read_message(c):
         i = 0
@@ -361,14 +363,19 @@ def auth_client(host):
         blue_print("[*] Your public key has been verified!")
 
         while i < 5:
-            ask_pass = "Please enter the Citadel password..."
+            ask_user_conn = "User connexion?"
+            blue_print(ask_user_conn,)
+            #passwd = getpass.getpass()
+            user_conn = raw_input("> ")
             print ""
+            ask_pass = "Your password?"
             blue_print(ask_pass,)
-            print ""
             #passwd = getpass.getpass()
             passwd = raw_input("> ")
-            get_passwd = send_socket_message(str(passwd), iv , AES_KEY)
-            s.send(get_passwd)
+
+            user_passwd = send_socket_message(str(user_conn + "|" + passwd), iv, AES_KEY)
+            
+            s.send(user_passwd)
 
             enc_check = s.recv(2048)
             check_auth = string_socket_message(enc_check, iv, AES_KEY)
@@ -398,7 +405,6 @@ def auth_client(host):
         # ************************************************************* #
 
 def chat_client(host, port):
-
     if str(home_host_ip) != "127.0.0.1":
         ip_to_show = str(home_host_ip)
 
