@@ -67,7 +67,9 @@ ip_key_reconn = {}
 global ip_sym_key_auth
 ip_sym_key_auth = {}
 global auth_ip_sock
-auth_ip_sock ={}
+auth_ip_sock = {}
+global admin_access
+admin_access = {}
 ip_socket_auth = {}
 ip_compteur = {}
 
@@ -217,20 +219,28 @@ def transmit(server_socket, sock, message, ip, is_message_client):
             if command == "$get_all_infos":
                 infos_list = []
                 sock_ip = ip
-                
-                for ip in IP_REG_PORT_DICT:
-                    curr_ip = str(ip).encode("utf-8")
-                    port = str(IP_REG_PORT_DICT[ip]).encode("utf-8")
-                    nickname = str(IP_NICKNAME[ip]).encode("utf-8")
-                    infos_list.append("[Nickname:" + nickname + "]|[IP address:" + str(curr_ip) + "]|[Port connection:" + port + "]\n")
 
-                str_infos= "".join(infos_list)
-                infos = "\n" + str_infos.replace(", ", "\\n")
+                if admin_access.has_key(sock_ip):
+                    for ip in IP_REG_PORT_DICT:
+                        curr_ip = str(ip).encode("utf-8")
+                        port = str(IP_REG_PORT_DICT[ip]).encode("utf-8")
+                        nickname = str(IP_NICKNAME[ip]).encode("utf-8")
+                        infos_list.append("[Nickname:" + nickname + "]|[IP address:" + str(curr_ip) + "]|[Port connection:" + port + "]\n")
 
-                hex_ciphertext = encrypt_message(sock_ip ,infos , IP_SYM_KEY_DICT, False)
-                sock.send(hex_ciphertext)
+                    str_infos= "".join(infos_list)
+                    infos = "\n" + str_infos.replace(", ", "\\n")
 
-                return
+                    hex_ciphertext = encrypt_message(sock_ip ,infos , IP_SYM_KEY_DICT, False)
+                    sock.send(hex_ciphertext)
+
+                    return
+
+                else:
+                    msg = "Unavailable command. You aren't admin."
+                    hex_ciphertext = encrypt_message(sock_ip , msg, IP_SYM_KEY_DICT, False)
+                    sock.send(hex_ciphertext) 
+
+                    return
 
             elif command == "$get_skull":
                 skull = ""
@@ -282,30 +292,40 @@ def transmit(server_socket, sock, message, ip, is_message_client):
                 return
 
             elif "$get_pop" in command:
-                nickname_to_pop = arobase_parser(decrypted_message, False)
-                nickname = nickname_to_pop[0]
-                
-                for ip_elem in IP_NICKNAME:
-                    if str(IP_NICKNAME[ip_elem]) == str(nickname): # Gérer le cas ou les pseudos sont les memes!!!!!
-                        confirmation = str(nickname) + " has been disconnected"
-                        send_confirmation = encrypt_message(ip, confirmation, IP_SYM_KEY_DICT, False)
-                        
-                        prev_message = "You have been disconnected by " + IP_NICKNAME[ip]
-                        send_prev = encrypt_message(ip_elem, prev_message, IP_SYM_KEY_DICT, False)
-                        
-                        cipher_socket = IP_SOCKET_DICT[ip_elem] # Socket désigné par le nickname et l'adresse ip associée
-                        cipher_socket.close()
-                        remove_socket(cipher_socket)
+                sock_ip = ip
 
-                        break
-
-                if nickname not in IP_NICKNAME.values():    
-                    ip_cipher_addr = ip
-                    message = str(nickname) + " not found"
-                    hex_ciphertext = encrypt_message(ip_cipher_addr,message, IP_SYM_KEY_DICT, False) # Sinon on renvoie un message d'erreur au socket envoyeur
-                    sock.send(hex_ciphertext)
+                if admin_access.has_key(sock_ip):
+                    nickname_to_pop = arobase_parser(decrypted_message, False)
+                    nickname = nickname_to_pop[0]
                     
-                return # On sort de la fonction
+                    for ip_elem in IP_NICKNAME:
+                        if str(IP_NICKNAME[ip_elem]) == str(nickname): # Gérer le cas ou les pseudos sont les memes!!!!!
+                            confirmation = str(nickname) + " has been disconnected"
+                            send_confirmation = encrypt_message(sock_ip, confirmation, IP_SYM_KEY_DICT, False)
+                            
+                            prev_message = "You have been disconnected by " + IP_NICKNAME[sock_ip]
+                            send_prev = encrypt_message(ip_elem, prev_message, IP_SYM_KEY_DICT, False)
+                            
+                            cipher_socket = IP_SOCKET_DICT[ip_elem] # Socket désigné par le nickname et l'adresse ip associée
+                            cipher_socket.close()
+                            remove_socket(cipher_socket)
+
+                            break
+
+                    if nickname not in IP_NICKNAME.values():    
+                        ip_cipher_addr = sock_ip
+                        message = str(nickname) + " not found"
+                        hex_ciphertext = encrypt_message(ip_cipher_addr,message, IP_SYM_KEY_DICT, False) # Sinon on renvoie un message d'erreur au socket envoyeur
+                        sock.send(hex_ciphertext)
+                        
+                    return # On sort de la fonction
+
+                else:
+                    msg = "Unavailable command. You aren't admin."
+                    hex_ciphertext = encrypt_message(sock_ip , msg, IP_SYM_KEY_DICT, False)
+                    sock.send(hex_ciphertext) 
+
+                    return
             
             else:
                 sock_ip = ip
@@ -500,6 +520,9 @@ def authentication_server(auth_port):
                     else:
                         print "Data separator | for (user|passwd) not found"
                         auth_sock.close()
+
+                    if user == "admin":
+                        admin_access[ip] = "admin"
 
                     # Compteur de tentatives (limite:5)
                     time_now = get_time()
@@ -906,6 +929,7 @@ def chat_server():
                     remove_socket(sock)
 
     server_socket.close()
+
 
 if __name__ == "__main__":
 
