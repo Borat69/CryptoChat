@@ -30,7 +30,7 @@ import netifaces as ni
 import signal
 import time
 import getpass
-import plateforme 
+ 
 
 ni.ifaddresses("eth0")
 home_host_ip = ni.ifaddresses("eth0")[ni.AF_INET][0]["addr"]
@@ -363,6 +363,7 @@ def auth_client(host):
         blue_print("[*] Your public key has been verified!")
 
         while i < 5:
+            print ""
             ask_user_conn = "User connexion?"
             blue_print(ask_user_conn,)
             #passwd = getpass.getpass()

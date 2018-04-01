@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Citadel by boris and manu *********************************************************
+# Citadel by boris and manu
 
 from __future__ import unicode_literals
 
@@ -76,11 +76,6 @@ save_socket = ""
 compteur = 0
 
 now = datetime.datetime.now()
-minute = now.minute
-hour = now.hour
-day = now.day
-month = now.month
-year = now.year
 
 global start
 start = 0
@@ -89,28 +84,28 @@ first_passage = True
 
 def get_time():
     str_minute = ""
-    str_minute = str(minute)
+    str_minute = str(now.minute)
     
-    if int(minute) in range(0, 10):
-        str_minute = "0" + str(minute)
+    if int(now.minute) in range(0, 10):
+        str_minute = "0" + str(now.minute)
 
     str_hour = ""
-    str_hour = str(hour)
+    str_hour = str(now.hour)
 
-    if int(hour) in range(0, 10):
-        str_hour = "0" + str(hour)
+    if int(now.hour) in range(0, 10):
+        str_hour = "0" + str(now.hour)
 
     str_day = ""
-    str_day = str(day)
+    str_day = str(now.day)
 
-    if int(day) in range(0, 10):
-        str_day = "0" + str(day)
+    if int(now.day) in range(0, 10):
+        str_day = "0" + str(now.day)
 
     str_month = ""
-    str_month = str(month)
+    str_month = str(now.month)
 
-    if int(month) in range(0, 10):
-        str_month = "0" + str(month)
+    if int(now.month) in range(0, 10):
+        str_month = "0" + str(now.month)
 
     return str_minute, str_hour, str_day, str_month
 
@@ -211,7 +206,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
 
         with open("message_store", "a+") as f:
             time_now = get_time()
-            saved_data = time_now[2] + "/" + time_now[3] + "/" + str(year) + " at [" + time_now[1] + "h" + time_now[0] + "]" + " " + decrypted_message + "\n"
+            saved_data = time_now[2] + "/" + time_now[3] + "/" + str(now.year) + " at [" + time_now[1] + "h" + time_now[0] + "]" + " " + decrypted_message + "\n"
             f.write(saved_data)
 
         # Gestion des commandes
@@ -410,7 +405,7 @@ def authentication_server(auth_port):
 
                 time_now = get_time()
                
-                print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "]  Receiving connection from " + "[" + str(auth_ip) + "," + str(auth_port) + "]"
+                print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "] Receiving connection from " + "[" + str(auth_ip) + "," + str(auth_port) + "]"
 
                 if sockfd in AUTH_SOCK:
                     del sockfd
@@ -514,7 +509,7 @@ def authentication_server(auth_port):
                             with verr:
                                 success = encrypt_auth_message(ip, "True", ip_sym_key_auth, True)                        
                                                
-                                print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "]  Authentication success for " + "[" + str(ip) + "," + str(port) + "]"
+                                print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "] Authentication success for " + "[" + str(ip) + "," + str(port) + "]"
                            
                                 auth_sock.send(success)
                                 AUTH_VERIF[ip] = True
@@ -539,6 +534,8 @@ def authentication_server(auth_port):
                             with verr:
                                 failed = encrypt_auth_message(ip, "False", ip_sym_key_auth, True)
 
+                                time_now = get_time()
+
                                 print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "] Authentication failed for " + "[" + str(ip) + "," + str(port) + "]"
                                 print ""
                             
@@ -546,7 +543,7 @@ def authentication_server(auth_port):
                                 ip_compteur[ip] += 1                   
                                 AUTH_VERIF[ip] = False
 
-                    if not auth and ip_compteur == 5:
+                    if not auth and ip_compteur[ip] == 5:
                         auth_sock.close()
 
                         ip_to_del = ""
@@ -826,10 +823,10 @@ def chat_server():
                         saved_data = ""
 
                         with open("connections_store", "a+") as f:
-                            saved_data = time_now[2] + "/" + time_now[3] + "/" + str(year) + " at [" + time_now[1] + "h" + time_now[0] + "]" + " Connection: " + str(nickname_to_print) + " [" + str(curr_ip) + "," + str(curr_port) + "]" + "\n"
+                            saved_data = time_now[2] + "/" + time_now[3] + "/" + str(now.year) + " at [" + time_now[1] + "h" + time_now[0] + "]" + " Connection: " + str(nickname_to_print) + " [" + str(curr_ip) + "," + str(curr_port) + "]" + "\n"
                             f.write(saved_data)
 
-                        print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "]  " + "Nickname:" + str(nickname_to_print) + " [" + str(curr_ip) + "," + str(curr_port) + "]" + " now connected\n"
+                        print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "] " + "Nickname:" + str(nickname_to_print) + " [" + str(curr_ip) + "," + str(curr_port) + "]" + " now connected\n"
                         
                         transmit(server_socket, sockfd, "\n" + str(nickname_to_print) + " [%s:%s] has join Citadel room\n" % addr, curr_ip, False)
 
@@ -872,25 +869,46 @@ def chat_server():
 
                         for ip in IP_SOCKET_DICT:
                             if sock == IP_SOCKET_DICT[ip]:
-                                ip_addr = ip_client_addr
+                                ip_addr = ip
                                 break
 
                         nickname_off = IP_NICKNAME[ip_addr]
 
                         transmit(server_socket, sock, str(nickname_off) + " has leaved Citadel room", ip_addr, False)
+
+                        time_now = get_time()
+
+                        print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "] " + "Nickname:" + str(nickname_off) + "[" + str(ip_addr) + "] is disconnected"
                         print ""
-                        print "[" + colored("*","green") + "] " + " Nickname:" + str(nickname_off) + "[" + str(ip_addr) + "] is disconnected"
-                        print ""                   
+                        
                         remove_socket(sock)
                     
                 # exception
                 except:
-                    pass
-                    #transmit(server_socket, sock, "Client (%s, %s) is offline\n" % addr, None, False)
+                    # remove the socket that's broken
+                    # at this stage, no data means probably the connection has been broken
+                    ip_addr = ""
+
+                    for ip in IP_SOCKET_DICT:
+                        if sock == IP_SOCKET_DICT[ip]:
+                            ip_addr = ip
+                            break
+
+                    nickname_off = IP_NICKNAME[ip_addr]
+
+                    transmit(server_socket, sock, str(nickname_off) + " has leaved Citadel room", ip_addr, False)
+
+                    time_now = get_time()
+
+                    print "[" + colored("*","green") + "] " + "[" + time_now[1] + "h" + time_now[0] + "] " + "Nickname:" + str(nickname_off) + "[" + str(ip_addr) + "] is disconnected"
+                    print ""
+                    
+                    remove_socket(sock)
 
     server_socket.close()
 
 if __name__ == "__main__":
+
     chat_server()
 
 
