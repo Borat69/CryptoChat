@@ -120,6 +120,7 @@ def asym_decrypt(enc_sym_key, priv_key):
 
     return asym_cipher.decrypt(enc_sym_key)
 
+
 def asym_auth_decrypt(enc_sym_key, priv_key):
     asym_cipher = PKCS1_OAEP.new(priv_key)
 
@@ -131,6 +132,7 @@ def socket_message(str_message, iv, AES_key):
     hex_cipher_text = cipher_text.encode("hex").upper()
 
     return hex_cipher_text
+    
 
 def socket_auth_message(str_message, iv, AES_key):
     cipher_text = sym_auth_encrypt(str_message, iv, AES_key)

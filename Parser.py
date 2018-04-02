@@ -10,7 +10,7 @@ sys.setdefaultencoding('utf8')
 
 
 COMMANDS_LIST = ["$get_nicknames_up", "$get_pop", "$get_all_infos", "$get_skull", "$get_skull_diffuse"]
-COMMANDS_LIST_HELP = ["\n$get_nicknames_up: get all nicknames of connected friends\n", "$get_pop @nickname: close the connection of a friend\n"]
+COMMANDS_LIST_HELP = ["\n$get_nicknames_up: get all nicknames of connected friends\n", "$get_pop @nickname: close the connection of a friend\n", "$get_skull: get a skull\n", "$get_skull_diffuse: diffuse a skull\n", "$help: show commands\n"]
 
 
 def get_commands():

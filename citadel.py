@@ -145,64 +145,66 @@ def transmit(server_socket, sock, message, ip, is_message_client):
     
     # Message en provenance d'un client
     if is_message_client:
-        # Gestion des messages intempestifs
-        if save_socket == str(sock):
-            compteur += 1
-            
-            if first_passage:
-                start = time.time()
-                first_passage = False
+        if ip not in admin_access:
+            # Gestion des messages intempestifs
+            if save_socket == str(sock):
+                compteur += 1
                 
-        else:
-            compteur = 0
-            first_passage = True
-            start = 0
-            
-        if compteur > 5 and compteur < 7:
-            timer = time.time() - start
-            
-            if timer < 3:
-                message = "\nSlow down the messages please, or you will be disconnected\n"
-                hex_ciphertext = encrypt_message(ip ,message , IP_SYM_KEY_DICT, False)
-                sock.send(hex_ciphertext)
-            
+                if first_passage:
+                    start = time.time()
+                    first_passage = False
+                    
             else:
                 compteur = 0
                 first_passage = True
                 start = 0
                 
-        elif compteur > 8 and compteur < 10:
-            timer = time.time() - start
-            
-            if timer < 5:
-                message = "\nThis is your last chance!\n"
-                hex_ciphertext = encrypt_message(ip ,message , IP_SYM_KEY_DICT, False)
-                sock.send(hex_ciphertext)   
+            if compteur > 5 and compteur < 7:
+                timer = time.time() - start
                 
-            else:
-                compteur = 0
-                first_passage = True
-                start = 0 
+                if timer < 3:
+                    message = "\nSlow down the messages please, or you will be disconnected\n"
+                    hex_ciphertext = encrypt_message(ip ,message , IP_SYM_KEY_DICT, False)
+                    sock.send(hex_ciphertext)
+                
+                else:
+                    compteur = 0
+                    first_passage = True
+                    start = 0
+                    
+            elif compteur > 8 and compteur < 10:
+                timer = time.time() - start
+                
+                if timer < 5:
+                    message = "\nThis is your last chance!\n"
+                    hex_ciphertext = encrypt_message(ip ,message , IP_SYM_KEY_DICT, False)
+                    sock.send(hex_ciphertext)   
+                    
+                else:
+                    compteur = 0
+                    first_passage = True
+                    start = 0 
+            
+            elif compteur > 11:
+                timer = time.time() - start
+                
+                if timer < 7:
+                    message = "\nGood bye!\n"
+                    hex_ciphertext = encrypt_message(ip ,message , IP_SYM_KEY_DICT, False)
+                    sock.send(hex_ciphertext)
+                    sock.close()
+
+                    remove_socket(sock)                       
+                    
+                    return           
         
-        elif compteur > 11:
-            timer = time.time() - start
-            
-            if timer < 7:
-                message = "\nGood bye!\n"
-                hex_ciphertext = encrypt_message(ip ,message , IP_SYM_KEY_DICT, False)
-                sock.send(hex_ciphertext)
-                sock.close()
+                else:
+                    compteur = 0
+                    first_passage = True
+                    start = 0
 
-                remove_socket(sock)                       
+            save_socket = str(sock) 
                 
-                return           
-    
-            else:
-                compteur = 0
-                first_passage = True
-                start = 0
-
-        save_socket = str(sock)     
         decrypted_message = decrypt_message(ip, message, IP_SYM_KEY_DICT) # Le message envoyé par le socket est déchiffré
         decrypted_message = safe_string(decrypted_message)
 
@@ -243,6 +245,7 @@ def transmit(server_socket, sock, message, ip, is_message_client):
                     return
 
             elif command == "$get_skull":
+                sock_ip = ip
                 skull = ""
                 skull = get_skull()
                 hex_ciphertext = encrypt_message(sock_ip ,skull , IP_SYM_KEY_DICT, False)
@@ -254,13 +257,12 @@ def transmit(server_socket, sock, message, ip, is_message_client):
                 skull = ""
                 skull = get_skull()
 
-                for socket in SOCKET_LIST:
-                    if socket != server_socket: #permet de ne pas envoyer le message au client envoyeur du message       
+                for sock_ip in IP_SOCKET_DICT:
+                    if IP_SOCKET_DICT[sock_ip] != server_socket: #permet de ne pas envoyer le message au client envoyeur du message       
                         # Chiffrer le message pour tous les sockets présents et le renvoyer a tous les sockets apres chiffrement
-                        curr_tuple = socket.getpeername()
-                        ip_client_addr = curr_tuple[0]
-                        hex_ciphertext = encrypt_message(ip_client_addr,skull , IP_SYM_KEY_DICT, False)
-                        socket.send(hex_ciphertext)
+
+                        hex_ciphertext = encrypt_message(sock_ip, skull, IP_SYM_KEY_DICT, False)
+                        IP_SOCKET_DICT[sock_ip].send(hex_ciphertext)
 
                 return
 
