@@ -361,7 +361,6 @@ def auth_client(host):
     passwd = ""
     enc_check_auth = ""
     check_auth = ""
-    enc_confirm = ""
 
     # Déconnexion et reconnexion (enregistrement de la clé symétrique) a gérer plus tard
     pub_key_verif = s.recv(4096)     
@@ -389,32 +388,45 @@ def auth_client(host):
     blue_print("[*] Checking your public key for authentication...")
     print ""
     time.sleep(2)
+    i = 0
 
     if public_key.verify(hash, signature):
         blue_print("[*] Your public key has been verified!")
-        ask_pass = "Please enter the Citadel password..."
-        print ""
-        blue_print(ask_pass,)
-        print ""
-        #passwd = getpass.getpass()
-        passwd = raw_input("> ")
-        get_passwd = send_socket_message(str(passwd), iv , AES_KEY)
-        s.send(get_passwd)
 
-        enc_check = s.recv(2048)
-        check_auth = string_socket_message(enc_check, iv, AES_KEY)
-
-        if check_auth == "True":
+        while i < 5:
             print ""
-            blue_print(" " + str(check_auth))
-
-        else:
+            ask_user_conn = "User connexion?"
+            blue_print(ask_user_conn,)
+            #passwd = getpass.getpass()
+            user_conn = raw_input("> ")
             print ""
-            print check_auth
-            s.send(enc_confirm)
-            blue_print(" Probleme with the password, please contact the admins")
-            sys.exit(0)
+            ask_pass = "Your password?"
+            blue_print(ask_pass,)
+            #passwd = getpass.getpass()
+            passwd = raw_input("> ")
+
+            user_passwd = send_socket_message(str(user_conn + "|" + passwd), iv, AES_KEY)
+            
+            s.send(user_passwd)
+
+            enc_check = s.recv(2048)
+            check_auth = string_socket_message(enc_check, iv, AES_KEY)
+
+            if "True" in check_auth:
+                print ""
+                print "[*] " + "Authentication successful!"
+
+                break
+
+            else:
+                print ""
+                print "Incorrect password."
+                i += 1
         
+        if i == 5:
+            print ""
+            print "Five tentatives, please relaunch the application and try again."
+            sys.exit(0)
 
     else:
         print ""
